@@ -279,7 +279,54 @@ export async function sync(url?: string, anonKey?: string): Promise<SyncResult> 
  *  lee en el correo y se teclea en la misma ventana que lo pidio.
  * ========================================================================== */
 
-/** Pide un codigo de acceso por correo. No se manejan contrasenas en ningun momento. */
+/* ── Acceso con contrasena (metodo principal) ──────────────────────────────
+ *
+ *  Es el unico metodo que no depende del correo, y por tanto el unico inmune a
+ *  los tres problemas que tiene aqui el envio de emails:
+ *    - el limite de envios del SMTP compartido de Supabase
+ *    - las plantillas, que hay que editar para que incluyan el codigo
+ *    - la separacion de contextos entre la PWA instalada y Safari en iOS
+ *
+ *  La contrasena la gestiona Supabase Auth (hash bcrypt en servidor). La app no
+ *  la guarda ni la ve mas alla del momento de enviarla.
+ *
+ *  Requiere desactivar "Confirm email" en Supabase (Authentication → Providers
+ *  → Email); si no, el registro seguiria mandando un correo de verificacion.
+ * ------------------------------------------------------------------------ */
+
+export async function signInWithPassword(
+  email: string,
+  password: string,
+  url?: string,
+  anonKey?: string,
+) {
+  const sb = getClient(url, anonKey)
+  if (!sb) throw new Error('Supabase no esta configurado')
+  const { error } = await sb.auth.signInWithPassword({ email, password })
+  if (error) throw error
+}
+
+/**
+ * Crea la cuenta y deja la sesion iniciada.
+ *
+ * Devuelve needsConfirmation cuando el proyecto exige verificar el correo: en
+ * ese caso Supabase crea el usuario pero no abre sesion, y conviene decirlo en
+ * lugar de dejar al usuario mirando una pantalla que no cambia.
+ */
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  url?: string,
+  anonKey?: string,
+): Promise<{ needsConfirmation: boolean }> {
+  const sb = getClient(url, anonKey)
+  if (!sb) throw new Error('Supabase no esta configurado')
+  const { data, error } = await sb.auth.signUp({ email, password })
+  if (error) throw error
+  return { needsConfirmation: Boolean(data.user && !data.session) }
+}
+
+/** Pide un codigo de acceso por correo. Alternativa por si se prefiere no usar contrasena. */
 export async function signInWithEmail(email: string, url?: string, anonKey?: string) {
   const sb = getClient(url, anonKey)
   if (!sb) throw new Error('Supabase no esta configurado')
@@ -317,8 +364,20 @@ export function describeAuthError(e: unknown): string {
   const raw = e instanceof Error ? e.message : String(e)
   const m = raw.toLowerCase()
 
+  if (m.includes('invalid login credentials')) {
+    return 'Correo o contrasena incorrectos. Si aun no tienes cuenta, usa "Crear cuenta".'
+  }
+  if (m.includes('user already registered') || m.includes('already been registered')) {
+    return 'Ese correo ya tiene cuenta. Usa "Entrar" en lugar de "Crear cuenta".'
+  }
+  if (m.includes('password should be at least') || m.includes('password is too short')) {
+    return 'La contrasena es demasiado corta: usa al menos 6 caracteres.'
+  }
+  if (m.includes('email not confirmed')) {
+    return 'El correo no esta verificado. Desactiva "Confirm email" en Supabase (Authentication → Providers → Email) o verifica desde el correo recibido.'
+  }
   if (m.includes('rate limit') || m.includes('too many requests')) {
-    return 'Limite de correos alcanzado. El servidor gratuito de Supabase permite muy pocos envios por hora: espera un rato o configura un SMTP propio.'
+    return 'Limite de correos alcanzado. El servidor gratuito de Supabase permite muy pocos envios por hora: espera un rato, o entra con contrasena, que no gasta correos.'
   }
   if (m.includes('token has expired') || m.includes('expired')) {
     return 'El codigo ha caducado. Pide uno nuevo.'

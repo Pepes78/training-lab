@@ -10,7 +10,9 @@ import {
   envConfig,
   hasEnvConfig,
   signInWithEmail,
+  signInWithPassword,
   signOut,
+  signUpWithPassword,
   verifyEmailCode,
 } from '@/lib/sync'
 import { formatBytes, isIOS, requestPersistence, type StorageStatus } from '@/lib/storage'
@@ -23,6 +25,8 @@ import { useEffect } from 'react'
 export default function Settings() {
   const { settings, updateSettings, runSync, syncResult, refresh } = useApp()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [authMsg, setAuthMsg] = useState('')
   const [authError, setAuthError] = useState(false)
   const [sending, setSending] = useState(false)
@@ -44,6 +48,39 @@ export default function Settings() {
   useEffect(() => {
     void currentUserEmail(effectiveUrl, effectiveKey).then(setSignedInAs)
   }, [effectiveUrl, effectiveKey, syncResult])
+
+  /** Entrar o registrarse con contrasena. Al terminar, sincroniza de inmediato. */
+  async function submitPassword() {
+    setAuthMsg('')
+    setAuthError(false)
+    setSending(true)
+    try {
+      if (mode === 'signup') {
+        const { needsConfirmation } = await signUpWithPassword(
+          email,
+          password,
+          effectiveUrl,
+          effectiveKey,
+        )
+        if (needsConfirmation) {
+          setAuthMsg(
+            'Cuenta creada, pero el proyecto exige verificar el correo. Confirma desde el mensaje recibido, o desactiva "Confirm email" en Supabase para entrar directamente.',
+          )
+          setSending(false)
+          return
+        }
+      } else {
+        await signInWithPassword(email, password, effectiveUrl, effectiveKey)
+      }
+      setPassword('')
+      setAuthMsg('Sesion iniciada. Sincronizando…')
+      await runSync()
+    } catch (e) {
+      setAuthError(true)
+      setAuthMsg(describeAuthError(e))
+    }
+    setSending(false)
+  }
 
   const syncLabel: Record<string, { text: string; tone: 'good' | 'warning' | 'critical' | 'neutral' }> = {
     disabled: { text: 'Sin configurar', tone: 'neutral' },
@@ -126,11 +163,78 @@ export default function Settings() {
           ) : configured ? (
             <>
               <p className="text-[13px] leading-relaxed text-ink-secondary">
-                Escribe tu correo y te llegara un codigo de seis digitos. No hay contrasenas y no
-                necesitas cuenta de Supabase: eso es solo el panel de administracion.
+                Crea una cuenta con tu correo y una contrasena. No necesitas cuenta de Supabase:
+                eso es solo el panel de administracion.
               </p>
 
-              <div className="flex gap-2">
+              {/* Selector Entrar / Crear cuenta */}
+              <div className="flex gap-1 rounded-lg bg-surface-sunken p-1">
+                {(['signin', 'signup'] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setMode(m)
+                      setAuthMsg('')
+                      setAuthError(false)
+                    }}
+                    className={
+                      mode === m
+                        ? 'flex-1 rounded-md bg-white px-3 py-1.5 text-[13px] font-medium text-ink shadow-sm'
+                        : 'flex-1 rounded-md px-3 py-1.5 text-[13px] font-medium text-ink-secondary'
+                    }
+                  >
+                    {m === 'signin' ? 'Entrar' : 'Crear cuenta'}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@correo.com"
+                className="h-11 w-full rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+              />
+              <input
+                type="password"
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === 'signup' ? 'Contrasena (min. 6 caracteres)' : 'Contrasena'}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && email.includes('@') && password.length >= 6) {
+                    void submitPassword()
+                  }
+                }}
+                className="h-11 w-full rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+              />
+              <Button
+                variant="primary"
+                className="w-full"
+                disabled={!email.includes('@') || password.length < 6 || sending}
+                onClick={() => void submitPassword()}
+              >
+                {sending
+                  ? 'Un momento…'
+                  : mode === 'signup'
+                    ? 'Crear cuenta y entrar'
+                    : 'Entrar'}
+              </Button>
+
+              {/* Alternativa por correo, plegada: el metodo principal es la contrasena */}
+              <details className="text-[12px]">
+                <summary className="cursor-pointer text-ink-secondary">
+                  Prefiero un codigo por correo
+                </summary>
+                <div className="mt-2 space-y-3 rounded-lg border border-hairline p-3">
+                  <p className="text-[12px] leading-relaxed text-ink-muted">
+                    Requiere que la plantilla del correo en Supabase incluya{' '}
+                    <code>{'{{ .Token }}'}</code>, tanto en <em>Magic Link</em> como en{' '}
+                    <em>Confirm signup</em>. Ademas gasta envios del limite gratuito.
+                  </p>
+                  <div className="flex gap-2">
                 <input
                   type="email"
                   inputMode="email"
@@ -205,11 +309,6 @@ export default function Settings() {
                       </Button>
                     </div>
                   </label>
-                  <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
-                    Si el correo solo trae un enlace y no un codigo, hay que anadir{' '}
-                    <code>{'{{ .Token }}'}</code> a la plantilla en Supabase: Authentication → Email
-                    Templates → Magic Link.
-                  </p>
                   <button
                     onClick={() => {
                       setCodeSent(false)
@@ -223,6 +322,8 @@ export default function Settings() {
                   </button>
                 </div>
               )}
+                </div>
+              </details>
             </>
           ) : (
             <p className="rounded-lg bg-[#fff8e6] px-3 py-2.5 text-[12px] leading-relaxed text-[#8a6200]">
