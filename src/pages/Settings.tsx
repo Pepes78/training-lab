@@ -97,23 +97,28 @@ export default function Settings() {
           </label>
           <label className="block">
             <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-              Clave anonima (anon key)
+              Clave publicable (publishable key)
             </span>
             <input
               type="text"
               value={settings.supabaseAnonKey}
               onChange={(e) => void updateSettings({ supabaseAnonKey: e.target.value.trim() })}
-              placeholder="eyJhbGciOi..."
+              placeholder="sb_publishable_..."
               className="h-11 w-full rounded-lg border border-hairline bg-white px-3 font-mono text-[12px] text-ink focus:border-accent focus:outline-none"
             />
+            <span className="mt-1 block text-[11px] leading-snug text-ink-muted">
+              En Supabase: Project Settings → API. Es la que antes se llamaba <em>anon key</em>; si
+              tu proyecto es antiguo veras una clave larga que empieza por <code>eyJ</code> y
+              tambien vale. Nunca pongas aqui la <strong>secret key</strong>.
+            </span>
           </label>
 
           <div className="rounded-lg border border-[#f5e3b0] bg-[#fff8e6] p-3">
             <p className="text-[11px] leading-relaxed text-[#8a6200]">
-              <strong className="font-semibold">La clave anonima es publica por diseno</strong>, pero
-              solo protege tus datos si has ejecutado <code>supabase/schema.sql</code> con Row Level
-              Security activado y has iniciado sesion. Sin RLS, cualquiera con la clave puede leer y
-              borrar todo.
+              <strong className="font-semibold">La clave publicable es publica por diseno</strong> y
+              acaba en el JavaScript del navegador de todas formas, pero solo protege tus datos si
+              has ejecutado <code>supabase/schema.sql</code> con Row Level Security activado y has
+              iniciado sesion. Sin RLS, cualquiera con la clave puede leer y borrar todo.
             </p>
           </div>
 

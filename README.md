@@ -95,13 +95,20 @@ Para sincronizar móvil ↔ PC:
 
 1. Crea un proyecto en [supabase.com](https://supabase.com) (plan gratuito).
 2. SQL Editor → pega y ejecuta [`supabase/schema.sql`](supabase/schema.sql).
-3. En la app: **Ajustes → Sincronización**, pega la URL y la `anon key` del proyecto.
+3. En la app: **Ajustes → Sincronización**, pega la **Project URL** y la **publishable key**
+   del proyecto (Project Settings → API).
 4. Inicia sesión con tu correo (enlace mágico, sin contraseñas).
 
-> **Sobre la seguridad.** La `anon key` es pública por diseño y puede vivir en el repo.
-> Lo que protege los datos es **Row Level Security**: cada fila lleva `user_id` y la
-> política exige `auth.uid() = user_id`. Sin RLS, cualquiera con la clave puede leer y
-> borrar toda la tabla. El `schema.sql` la deja activada; no la desactives.
+> **Qué clave es cuál.** Supabase renombró las claves: la **publishable key**
+> (`sb_publishable_…`) es la que antes se llamaba *anon*, y la **secret key** es la antigua
+> *service_role*. En la app va siempre la **publishable**. En proyectos antiguos verás en su
+> lugar un JWT largo que empieza por `eyJ`; funciona igual.
+>
+> **Sobre la seguridad.** La clave publicable lo es por diseño y puede vivir en el repo: acaba
+> en el JavaScript del navegador de todos modos. Lo que protege los datos es **Row Level
+> Security**: cada fila lleva `user_id` y la política exige `auth.uid() = user_id`. Sin RLS,
+> cualquiera con la clave puede leer y borrar toda la tabla. El `schema.sql` la deja activada;
+> no la desactives. La **secret key** nunca debe salir del panel de Supabase.
 
 ## Compartirla con más gente
 
@@ -114,9 +121,9 @@ Lo único que hay que preparar es no obligar a cada uno a pegar la URL y la clav
 
 1. Crea `.env.production` en la raíz (ver [`.env.example`](.env.example)) con
    `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
-2. Commitea el archivo. **Sí, al repo público**: la `anon key` acaba en el JavaScript del
-   navegador de todos modos, así que esconderla no aporta nada. Lo que protege los datos
-   es RLS. La que **nunca** debe salir del panel de Supabase es la `service_role`.
+2. Commitea el archivo. **Sí, al repo público**: la clave publicable acaba en el JavaScript
+   del navegador de todos modos, así que esconderla no aporta nada. Lo que protege los datos
+   es RLS. La que **nunca** debe salir del panel de Supabase es la **secret key**.
 3. A partir de ahí tus amigos solo entran a la URL, la instalan y ponen su correo.
 
 Alternativa si prefieres no commitear las claves: el workflow de despliegue ya lee los
