@@ -87,6 +87,23 @@ function toLocal(table: string, row: Record<string, unknown>): Record<string, un
 let client: SupabaseClient | null = null
 let clientKey = ''
 
+/** Configuracion incrustada en el build (.env.production). */
+export function envConfig(): { url: string; key: string } {
+  return {
+    url: import.meta.env.VITE_SUPABASE_URL || '',
+    key: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+  }
+}
+
+/**
+ * true si la app viene preconfigurada de fabrica. En ese caso el usuario no
+ * tiene que pegar ninguna clave: le basta con su correo.
+ */
+export function hasEnvConfig(): boolean {
+  const c = envConfig()
+  return Boolean(c.url && c.key)
+}
+
 /**
  * Cliente de Supabase, o null si no esta configurado.
  * La configuracion sale de las variables de entorno de compilacion y, si no,

@@ -4,7 +4,7 @@ import { MUSCLES, MUSCLE_LABEL } from '@/types/catalog'
 import { VOLUME_LANDMARKS } from '@/data/volume-landmarks'
 import { Badge, Button, Card, NumberField, SectionTitle } from '@/components/ui'
 import { exportAll, importAll, type Backup } from '@/lib/db'
-import { currentUserEmail, signInWithEmail, signOut } from '@/lib/sync'
+import { currentUserEmail, envConfig, hasEnvConfig, signInWithEmail, signOut } from '@/lib/sync'
 import { formatBytes, isIOS, requestPersistence, type StorageStatus } from '@/lib/storage'
 import { useEffect } from 'react'
 
@@ -16,13 +16,22 @@ export default function Settings() {
   const { settings, updateSettings, runSync, syncResult, refresh } = useApp()
   const [email, setEmail] = useState('')
   const [authMsg, setAuthMsg] = useState('')
+  const [sending, setSending] = useState(false)
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
+
+  // Lo guardado en el dispositivo manda sobre lo incrustado en el build, para
+  // poder apuntar a otro proyecto sin recompilar.
+  const env = envConfig()
+  const fromEnv = hasEnvConfig()
+  const effectiveUrl = settings.supabaseUrl || env.url
+  const effectiveKey = settings.supabaseAnonKey || env.key
+  const configured = Boolean(effectiveUrl && effectiveKey)
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState('')
 
   useEffect(() => {
-    void currentUserEmail(settings.supabaseUrl, settings.supabaseAnonKey).then(setSignedInAs)
-  }, [settings.supabaseUrl, settings.supabaseAnonKey, syncResult])
+    void currentUserEmail(effectiveUrl, effectiveKey).then(setSignedInAs)
+  }, [effectiveUrl, effectiveKey, syncResult])
 
   const syncLabel: Record<string, { text: string; tone: 'good' | 'warning' | 'critical' | 'neutral' }> = {
     disabled: { text: 'Sin configurar', tone: 'neutral' },
@@ -83,98 +92,149 @@ export default function Settings() {
         </SectionTitle>
 
         <div className="space-y-3">
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-              URL del proyecto Supabase
-            </span>
-            <input
-              type="url"
-              value={settings.supabaseUrl}
-              onChange={(e) => void updateSettings({ supabaseUrl: e.target.value.trim() })}
-              placeholder="https://xxxx.supabase.co"
-              className="h-11 w-full rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-              Clave publicable (publishable key)
-            </span>
-            <input
-              type="text"
-              value={settings.supabaseAnonKey}
-              onChange={(e) => void updateSettings({ supabaseAnonKey: e.target.value.trim() })}
-              placeholder="sb_publishable_..."
-              className="h-11 w-full rounded-lg border border-hairline bg-white px-3 font-mono text-[12px] text-ink focus:border-accent focus:outline-none"
-            />
-            <span className="mt-1 block text-[11px] leading-snug text-ink-muted">
-              En Supabase: Project Settings → API. Es la que antes se llamaba <em>anon key</em>; si
-              tu proyecto es antiguo veras una clave larga que empieza por <code>eyJ</code> y
-              tambien vale. Nunca pongas aqui la <strong>secret key</strong>.
-            </span>
-          </label>
-
-          <div className="rounded-lg border border-[#f5e3b0] bg-[#fff8e6] p-3">
-            <p className="text-[11px] leading-relaxed text-[#8a6200]">
-              <strong className="font-semibold">La clave publicable es publica por diseno</strong> y
-              acaba en el JavaScript del navegador de todas formas, pero solo protege tus datos si
-              has ejecutado <code>supabase/schema.sql</code> con Row Level Security activado y has
-              iniciado sesion. Sin RLS, cualquiera con la clave puede leer y borrar todo.
-            </p>
-          </div>
-
+          {/*
+            El acceso va primero y las claves quedan escondidas: cuando la app viene
+            preconfigurada, ver dos campos vacios de URL y clave hace pensar que hay
+            que rellenarlos, cuando lo unico que hace falta es el correo.
+          */}
           {signedInAs ? (
-            <div className="flex items-center gap-3">
-              <span className="flex-1 text-[13px] text-ink">
+            <div className="flex items-center gap-3 rounded-lg bg-[#eefaee] px-3 py-2.5">
+              <span className="flex-1 text-[13px] text-[#0a7a0a]">
                 Sesion iniciada como <strong className="font-semibold">{signedInAs}</strong>
               </span>
               <Button
                 onClick={async () => {
-                  await signOut(settings.supabaseUrl, settings.supabaseAnonKey)
+                  await signOut(effectiveUrl, effectiveKey)
                   setSignedInAs(null)
                 }}
               >
                 Cerrar sesion
               </Button>
             </div>
+          ) : configured ? (
+            <>
+              <p className="text-[13px] leading-relaxed text-ink-secondary">
+                Escribe tu correo y te llegara un enlace de acceso. No hay contrasenas y no
+                necesitas cuenta de Supabase: eso es solo el panel de administracion.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@correo.com"
+                  className="h-11 flex-1 rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+                />
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    setAuthMsg('')
+                    setSending(true)
+                    try {
+                      await signInWithEmail(email, effectiveUrl, effectiveKey)
+                      setAuthMsg('Enlace enviado. Abrelo desde este mismo dispositivo.')
+                    } catch (e) {
+                      setAuthMsg(e instanceof Error ? e.message : 'No se pudo enviar el enlace')
+                    }
+                    setSending(false)
+                  }}
+                  // Solo depende del correo: la conexion ya esta resuelta
+                  disabled={!email.includes('@') || sending}
+                >
+                  {sending ? 'Enviando…' : 'Enviar enlace'}
+                </Button>
+              </div>
+            </>
           ) : (
-            <div className="flex gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@correo.com"
-                className="h-11 flex-1 rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
-              />
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  try {
-                    await signInWithEmail(email, settings.supabaseUrl, settings.supabaseAnonKey)
-                    setAuthMsg('Te hemos enviado un enlace de acceso. Revisa tu correo.')
-                  } catch (e) {
-                    setAuthMsg(e instanceof Error ? e.message : 'No se pudo enviar el enlace')
-                  }
-                }}
-                disabled={!email.includes('@') || !settings.supabaseUrl}
-              >
-                Enviar enlace
-              </Button>
-            </div>
+            <p className="rounded-lg bg-[#fff8e6] px-3 py-2.5 text-[12px] leading-relaxed text-[#8a6200]">
+              No hay ningun proyecto configurado. Despliega la app con un{' '}
+              <code>.env.production</code> o rellena los datos de conexion mas abajo.
+            </p>
           )}
+
           {authMsg && <p className="text-[12px] text-ink-secondary">{authMsg}</p>}
 
-          <div className="flex items-center gap-3">
-            <Button onClick={() => void runSync()}>Sincronizar ahora</Button>
-            {syncResult && (
-              <span className="num text-[11px] text-ink-muted">
-                {syncResult.pushed} subidas · {syncResult.pulled} bajadas · {syncResult.pending}{' '}
-                pendientes
-              </span>
-            )}
-          </div>
+          {configured && (
+            <div className="flex items-center gap-3">
+              <Button onClick={() => void runSync()}>Sincronizar ahora</Button>
+              {syncResult && (
+                <span className="num text-[11px] text-ink-muted">
+                  {syncResult.pushed} subidas · {syncResult.pulled} bajadas · {syncResult.pending}{' '}
+                  pendientes
+                </span>
+              )}
+            </div>
+          )}
           {syncResult?.message && (
             <p className="text-[12px] text-ink-secondary">{syncResult.message}</p>
           )}
+
+          {/* Conexion: plegada porque casi nadie necesita tocarla */}
+          <details className="rounded-lg border border-hairline">
+            <summary className="cursor-pointer px-3 py-2 text-[12px] font-medium text-ink-secondary">
+              Conexion avanzada
+              {fromEnv && !settings.supabaseUrl && (
+                <span className="ml-2 font-normal text-ink-muted">· ya configurada</span>
+              )}
+            </summary>
+            <div className="space-y-3 border-t border-hairline p-3">
+              <p className="text-[12px] leading-relaxed text-ink-secondary">
+                {fromEnv
+                  ? 'La app ya trae un proyecto configurado. Rellena esto solo si quieres apuntarla a otro distinto.'
+                  : 'Datos del proyecto de Supabase al que se conecta la app.'}
+              </p>
+
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                  URL del proyecto
+                </span>
+                <input
+                  type="url"
+                  value={settings.supabaseUrl}
+                  onChange={(e) => void updateSettings({ supabaseUrl: e.target.value.trim() })}
+                  placeholder={fromEnv ? env.url : 'https://xxxx.supabase.co'}
+                  className="h-11 w-full rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+                />
+                <span className="mt-1 block text-[11px] leading-snug text-ink-muted">
+                  Solo el origen, sin <code>/rest/v1/</code>: la app anade esa ruta sola.
+                </span>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                  Clave publicable
+                </span>
+                <input
+                  type="text"
+                  value={settings.supabaseAnonKey}
+                  onChange={(e) => void updateSettings({ supabaseAnonKey: e.target.value.trim() })}
+                  placeholder={fromEnv ? 'sb_publishable_… (ya configurada)' : 'sb_publishable_…'}
+                  className="h-11 w-full rounded-lg border border-hairline bg-white px-3 font-mono text-[12px] text-ink focus:border-accent focus:outline-none"
+                />
+                <span className="mt-1 block text-[11px] leading-snug text-ink-muted">
+                  En Supabase: Project Settings → API. Es la que antes se llamaba <em>anon key</em>.
+                  Nunca pongas aqui la <strong>secret key</strong>.
+                </span>
+              </label>
+
+              {(settings.supabaseUrl || settings.supabaseAnonKey) && fromEnv && (
+                <Button
+                  variant="danger"
+                  onClick={() => void updateSettings({ supabaseUrl: '', supabaseAnonKey: '' })}
+                >
+                  Volver al proyecto por defecto
+                </Button>
+              )}
+
+              <p className="rounded-lg border border-[#f5e3b0] bg-[#fff8e6] p-2.5 text-[11px] leading-relaxed text-[#8a6200]">
+                <strong className="font-semibold">La clave publicable es publica por diseno</strong>{' '}
+                y viaja al navegador de todas formas. Lo que protege tus datos es Row Level
+                Security: cada fila lleva tu usuario y nadie mas puede leerla.
+              </p>
+            </div>
+          </details>
         </div>
       </Card>
 
