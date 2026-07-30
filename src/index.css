@@ -1,0 +1,112 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+ *  Sistema de diseno
+ * ----------------------------------------------------------------------------
+ *  Base blanca, un unico acento azul, jerarquia por espaciado y peso en lugar
+ *  de por bordes y cajas. Mobile-first de verdad: la pantalla de entreno se usa
+ *  con una mano, sudando y con prisa, asi que los objetivos tactiles son
+ *  grandes y los campos numericos abren teclado numerico.
+ *
+ *  Los colores de serie salen de una paleta validada para daltonismo. Los de
+ *  estado (volumen) NUNCA comunican solos: siempre van con icono y etiqueta.
+ * ========================================================================== */
+
+@theme {
+  --color-ink: #0b0b0b;
+  --color-ink-secondary: #52514e;
+  --color-ink-muted: #898781;
+
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f7f7f5;
+  --color-hairline: #e6e5e0;
+  --color-grid: #eeede8;
+
+  --color-accent: #2a78d6;
+  --color-accent-soft: #eaf2fd;
+  --color-accent-strong: #1c5cab;
+
+  /* Serie categorica: los tres primeros slots validan todas las parejas */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+
+  /* Estado: reservados, jamas reutilizados como color de serie */
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-card: 14px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  /* Respeta la zona segura del iPhone con la barra de navegacion inferior */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Sin resaltado azul al tocar en movil: la app se usa a base de toques */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Los inputs numericos no deben mostrar las flechitas: ocupan sitio util */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+@utility card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scroll horizontal contenido: el cuerpo de la pagina nunca se desplaza en X */
+@utility scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-in {
+  animation: fade-up 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

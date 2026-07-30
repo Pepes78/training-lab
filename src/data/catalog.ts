@@ -1,0 +1,659 @@
+import { exerciseSchema, type Exercise, type ExerciseInput } from '@/types/catalog'
+
+/* ============================================================================
+ *  Catalogo base de ejercicios
+ * ----------------------------------------------------------------------------
+ *  Migrado desde assets/exercise-db.js del sitio anterior y ampliado con los
+ *  movimientos que necesita la rutina Upper/Lower + PPL.
+ *
+ *  Los GIF se sirven desde la CDN de ExerciseDB usando mediaId. La media NO
+ *  vive en este repo. Datos de ejercicio: hasaneyldrm/exercises-dataset,
+ *  atribucion Gym Visual (https://gymvisual.com), uso no comercial.
+ *
+ *  SOBRE LOS FACTORES DE CONTRIBUCION
+ *  Cada serie reparte volumen entre los musculos implicados:
+ *    1.00  motor primario, la serie cuenta entera
+ *    0.50  secundario con estimulo real de crecimiento (triceps en press banca)
+ *    0.25  implicacion menor o estabilizador
+ *  Son estimaciones razonadas, no medidas de laboratorio; ajustalas si tu
+ *  criterio difiere. Alimentan directamente la pantalla de volumen semanal.
+ * ========================================================================== */
+
+const RAW: ExerciseInput[] = [
+  /* ── Empuje horizontal: pecho ─────────────────────────────────────────── */
+  {
+    id: 'press-banca-barra',
+    name: { es: 'Press de banca con barra', en: 'barbell bench press' },
+    pattern: 'horizontal-push',
+    equipment: 'barbell',
+    primary: [{ muscle: 'chest', factor: 1 }],
+    secondary: [
+      { muscle: 'triceps', factor: 0.5 },
+      { muscle: 'front-delts', factor: 0.5 },
+    ],
+    mediaId: 'EIeI8Vf',
+    cues: [
+      'Escapulas retraidas y deprimidas contra el banco',
+      'Barra a la linea del esternon, codos ~45 grados',
+      'Pies firmes en el suelo, tension en todo el cuerpo',
+    ],
+  },
+  {
+    id: 'press-inclinado-mancuernas',
+    name: { es: 'Press inclinado con mancuernas', en: 'dumbbell incline bench press' },
+    pattern: 'horizontal-push',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'chest', factor: 1 }],
+    secondary: [
+      { muscle: 'front-delts', factor: 0.5 },
+      { muscle: 'triceps', factor: 0.5 },
+    ],
+    mediaId: 'ns0SIbU',
+    cues: ['Banco a 30 grados, mas inclinacion desplaza el trabajo al hombro', 'Estirar sin perder tension escapular'],
+  },
+  {
+    id: 'press-pecho-maquina',
+    name: { es: 'Press de pecho en maquina', en: 'lever chest press' },
+    pattern: 'horizontal-push',
+    equipment: 'machine',
+    primary: [{ muscle: 'chest', factor: 1 }],
+    secondary: [
+      { muscle: 'triceps', factor: 0.5 },
+      { muscle: 'front-delts', factor: 0.25 },
+    ],
+    mediaId: 'T0yTjgW',
+    cues: ['Ajusta el asiento para que las manos queden a la altura del pecho'],
+  },
+  {
+    id: 'aperturas-mancuernas',
+    name: { es: 'Aperturas con mancuernas', en: 'dumbbell fly' },
+    pattern: 'horizontal-push',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'chest', factor: 1 }],
+    secondary: [{ muscle: 'front-delts', factor: 0.25 }],
+    mediaId: 'yz9nUhF',
+    cues: ['Codos ligeramente flexionados y fijos', 'Busca el estiramiento, no el peso'],
+  },
+  {
+    id: 'cruce-poleas',
+    name: { es: 'Cruce de poleas', en: 'cable upper chest crossovers' },
+    pattern: 'horizontal-push',
+    equipment: 'cable',
+    primary: [{ muscle: 'chest', factor: 1 }],
+    secondary: [{ muscle: 'front-delts', factor: 0.25 }],
+    mediaId: 'j7XMAyn',
+    cues: ['Cruza las manos en el centro para acortar del todo el pectoral'],
+  },
+  {
+    id: 'fondos-paralelas',
+    name: { es: 'Fondos en paralelas', en: 'triceps dip' },
+    pattern: 'horizontal-push',
+    equipment: 'bodyweight',
+    primary: [
+      { muscle: 'triceps', factor: 1 },
+      { muscle: 'chest', factor: 0.5 },
+    ],
+    secondary: [{ muscle: 'front-delts', factor: 0.5 }],
+    mediaId: 'X6C6i5Y',
+    cues: ['Torso vertical enfatiza triceps; inclinado hacia delante, pectoral'],
+  },
+
+  /* ── Empuje vertical: hombro ──────────────────────────────────────────── */
+  {
+    id: 'press-militar-mancuernas',
+    name: { es: 'Press militar con mancuernas', en: 'dumbbell seated shoulder press' },
+    pattern: 'vertical-push',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'front-delts', factor: 1 }],
+    secondary: [
+      { muscle: 'triceps', factor: 0.5 },
+      { muscle: 'side-delts', factor: 0.5 },
+    ],
+    mediaId: 'znQUdHY',
+    cues: ['No hiperextiendas la lumbar', 'Recorrido completo sin bloquear con golpe'],
+  },
+  {
+    id: 'press-hombro-maquina',
+    name: { es: 'Press de hombro en maquina', en: 'lever shoulder press' },
+    pattern: 'vertical-push',
+    equipment: 'machine',
+    primary: [{ muscle: 'front-delts', factor: 1 }],
+    secondary: [
+      { muscle: 'triceps', factor: 0.5 },
+      { muscle: 'side-delts', factor: 0.25 },
+    ],
+    mediaId: '67n3r98',
+  },
+  {
+    id: 'elevaciones-laterales',
+    name: { es: 'Elevaciones laterales con mancuernas', en: 'dumbbell lateral raise' },
+    pattern: 'shoulder-abduction',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'side-delts', factor: 1 }],
+    secondary: [{ muscle: 'traps', factor: 0.25 }],
+    mediaId: 'DsgkuIt',
+    cues: ['Sube hasta la horizontal, sin encoger el trapecio', 'Peso ligero y control: el deltoides lateral es pequeno'],
+  },
+  {
+    id: 'elevaciones-laterales-polea',
+    name: { es: 'Elevaciones laterales en polea', en: 'cable lateral raise' },
+    pattern: 'shoulder-abduction',
+    equipment: 'cable',
+    primary: [{ muscle: 'side-delts', factor: 1 }],
+    secondary: [{ muscle: 'traps', factor: 0.25 }],
+    mediaId: 'goJ6ezq',
+    isUnilateral: true,
+    cues: ['La polea mantiene tension en la parte baja, donde la mancuerna la pierde'],
+  },
+  {
+    id: 'face-pull',
+    name: { es: 'Face pull en polea', en: 'cable rear delt row' },
+    pattern: 'shoulder-horizontal-abduction',
+    equipment: 'cable',
+    primary: [{ muscle: 'rear-delts', factor: 1 }],
+    secondary: [
+      { muscle: 'upper-back', factor: 0.5 },
+      { muscle: 'traps', factor: 0.25 },
+    ],
+    mediaId: 'wqNPGCg',
+    cues: ['Codos altos, manos hacia las orejas', 'Salud del hombro: prioriza tecnica sobre carga'],
+  },
+  {
+    id: 'rotacion-externa',
+    name: { es: 'Rotacion externa de hombro', en: 'cable standing shoulder external rotation' },
+    pattern: 'other',
+    equipment: 'cable',
+    primary: [{ muscle: 'rear-delts', factor: 0.5 }],
+    secondary: [],
+    mediaId: 'FWdVhcW',
+    isUnilateral: true,
+    cues: ['Trabajo de manguito rotador: carga muy baja'],
+  },
+
+  /* ── Traccion vertical: dorsal ────────────────────────────────────────── */
+  {
+    id: 'dominadas',
+    name: { es: 'Dominadas', en: 'pull-up' },
+    pattern: 'vertical-pull',
+    equipment: 'bodyweight',
+    primary: [{ muscle: 'lats', factor: 1 }],
+    secondary: [
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'upper-back', factor: 0.5 },
+      { muscle: 'forearms', factor: 0.25 },
+    ],
+    mediaId: 'lBDjFxJ',
+    cues: ['Inicia deprimiendo las escapulas', 'Si dominas 12 reps limpias, anade lastre'],
+  },
+  {
+    id: 'dominadas-asistidas',
+    name: { es: 'Dominadas asistidas', en: 'assisted pull-up' },
+    pattern: 'vertical-pull',
+    equipment: 'machine',
+    primary: [{ muscle: 'lats', factor: 1 }],
+    secondary: [
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'upper-back', factor: 0.5 },
+    ],
+    mediaId: 'kiJ4Z2K',
+  },
+  {
+    id: 'jalon-pecho',
+    name: { es: 'Jalon al pecho', en: 'cable bar lateral pulldown' },
+    pattern: 'vertical-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'lats', factor: 1 }],
+    secondary: [
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'upper-back', factor: 0.5 },
+    ],
+    mediaId: 'eYnzaCm',
+    cues: ['Escapulas abajo, codos hacia la cadera', 'Sin balanceo del torso'],
+  },
+  {
+    id: 'jalon-amplio',
+    name: { es: 'Jalon agarre amplio', en: 'cable pulldown' },
+    pattern: 'vertical-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'lats', factor: 1 }],
+    secondary: [
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'upper-back', factor: 0.5 },
+    ],
+    mediaId: 'RVwzP10',
+  },
+  {
+    id: 'pullover-polea',
+    name: { es: 'Pullover en polea', en: 'cable straight arm pulldown' },
+    pattern: 'vertical-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'lats', factor: 1 }],
+    secondary: [{ muscle: 'triceps', factor: 0.25 }],
+    mediaId: 'x69MAlq',
+    cues: ['Brazos casi rectos: aisla el dorsal sin que el biceps sea el limite'],
+  },
+  {
+    id: 'pullover-mancuerna',
+    name: { es: 'Pullover con mancuerna', en: 'dumbbell pullover' },
+    pattern: 'vertical-pull',
+    equipment: 'dumbbell',
+    primary: [
+      { muscle: 'lats', factor: 1 },
+      { muscle: 'chest', factor: 0.5 },
+    ],
+    secondary: [{ muscle: 'triceps', factor: 0.25 }],
+    mediaId: '9XjtHvS',
+  },
+
+  /* ── Traccion horizontal: espalda ─────────────────────────────────────── */
+  {
+    id: 'remo-barra',
+    name: { es: 'Remo con barra', en: 'barbell bent over row' },
+    pattern: 'horizontal-pull',
+    equipment: 'barbell',
+    primary: [{ muscle: 'upper-back', factor: 1 }],
+    secondary: [
+      { muscle: 'lats', factor: 0.5 },
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'lower-back', factor: 0.5 },
+      { muscle: 'rear-delts', factor: 0.25 },
+    ],
+    mediaId: 'eZyBC3j',
+    cues: ['Torso ~45 grados, espalda neutra', 'Tira hacia el ombligo, no hacia el pecho'],
+  },
+  {
+    id: 'remo-mancuerna',
+    name: { es: 'Remo con mancuerna a una mano', en: 'dumbbell one arm bent-over row' },
+    pattern: 'horizontal-pull',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'upper-back', factor: 1 }],
+    secondary: [
+      { muscle: 'lats', factor: 0.5 },
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'rear-delts', factor: 0.25 },
+    ],
+    mediaId: 'C0MA9bC',
+    isUnilateral: true,
+    cues: ['Codo pegado al cuerpo', 'Sin rotar el torso para ganar recorrido'],
+  },
+  {
+    id: 'remo-sentado-polea',
+    name: { es: 'Remo sentado en polea', en: 'cable seated row' },
+    pattern: 'horizontal-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'upper-back', factor: 1 }],
+    secondary: [
+      { muscle: 'lats', factor: 0.5 },
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'rear-delts', factor: 0.25 },
+    ],
+    mediaId: 'fUBheHs',
+  },
+  {
+    id: 'remo-cable',
+    name: { es: 'Remo bajo en polea', en: 'cable low seated row' },
+    pattern: 'horizontal-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'upper-back', factor: 1 }],
+    secondary: [
+      { muscle: 'lats', factor: 0.5 },
+      { muscle: 'biceps', factor: 0.5 },
+      { muscle: 'rear-delts', factor: 0.25 },
+    ],
+    mediaId: 'hvV79Si',
+  },
+  {
+    id: 'remo-polea-amplio',
+    name: { es: 'Remo en polea agarre amplio', en: 'cable floor seated wide-grip row' },
+    pattern: 'horizontal-pull',
+    equipment: 'cable',
+    primary: [{ muscle: 'upper-back', factor: 1 }],
+    secondary: [
+      { muscle: 'rear-delts', factor: 0.5 },
+      { muscle: 'biceps', factor: 0.25 },
+    ],
+    mediaId: 'veXwo0D',
+  },
+  {
+    id: 'encogimientos',
+    name: { es: 'Encogimientos con mancuernas', en: 'dumbbell shrug' },
+    pattern: 'other',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'traps', factor: 1 }],
+    secondary: [{ muscle: 'forearms', factor: 0.25 }],
+    mediaId: 'NJzBsGJ',
+    cues: ['Sube recto, sin rotar los hombros', 'Pausa arriba de un segundo'],
+  },
+
+  /* ── Biceps ───────────────────────────────────────────────────────────── */
+  {
+    id: 'curl-barra',
+    name: { es: 'Curl de biceps con barra', en: 'barbell curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'barbell',
+    primary: [{ muscle: 'biceps', factor: 1 }],
+    secondary: [{ muscle: 'forearms', factor: 0.25 }],
+    mediaId: '25GPyDY',
+    cues: ['Sin balanceo de espalda', 'Codos fijos al costado'],
+  },
+  {
+    id: 'curl-ez',
+    name: { es: 'Curl con barra EZ', en: 'ez barbell curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'ez-bar',
+    primary: [{ muscle: 'biceps', factor: 1 }],
+    secondary: [{ muscle: 'forearms', factor: 0.25 }],
+    mediaId: '6TG6x2w',
+    cues: ['La barra EZ reduce la tension en la muneca'],
+  },
+  {
+    id: 'curl-inclinado',
+    name: { es: 'Curl inclinado con mancuernas', en: 'dumbbell incline curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'biceps', factor: 1 }],
+    secondary: [{ muscle: 'forearms', factor: 0.25 }],
+    mediaId: 'ae9UoXQ',
+    cues: ['El hombro extendido estira la porcion larga del biceps: el mejor angulo para crecer'],
+  },
+  {
+    id: 'curl-martillo',
+    name: { es: 'Curl martillo', en: 'dumbbell hammer curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'dumbbell',
+    primary: [
+      { muscle: 'biceps', factor: 1 },
+      { muscle: 'forearms', factor: 0.5 },
+    ],
+    secondary: [],
+    mediaId: 'slDvUAU',
+    cues: ['Agarre neutro: incide en braquial y braquiorradial'],
+  },
+  {
+    id: 'curl-concentrado',
+    name: { es: 'Curl concentrado', en: 'dumbbell concentration curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'biceps', factor: 1 }],
+    secondary: [],
+    mediaId: 'gvsWLQw',
+    isUnilateral: true,
+  },
+  {
+    id: 'curl-cable',
+    name: { es: 'Curl en polea baja', en: 'cable curl' },
+    pattern: 'elbow-flexion',
+    equipment: 'cable',
+    primary: [{ muscle: 'biceps', factor: 1 }],
+    secondary: [{ muscle: 'forearms', factor: 0.25 }],
+    mediaId: 'G08RZcQ',
+    cues: ['Tension constante en todo el recorrido'],
+  },
+
+  /* ── Triceps ──────────────────────────────────────────────────────────── */
+  {
+    id: 'triceps-polea',
+    name: { es: 'Extension de triceps en polea', en: 'cable pushdown (rope)' },
+    pattern: 'elbow-extension',
+    equipment: 'cable',
+    primary: [{ muscle: 'triceps', factor: 1 }],
+    secondary: [],
+    mediaId: 'dU605di',
+    cues: ['Codos fijos pegados al cuerpo', 'Abre la cuerda al final del recorrido'],
+  },
+  {
+    id: 'triceps-sobre-cabeza',
+    name: { es: 'Extension de triceps sobre la cabeza', en: 'cable overhead triceps extension' },
+    pattern: 'elbow-extension',
+    equipment: 'cable',
+    primary: [{ muscle: 'triceps', factor: 1 }],
+    secondary: [],
+    mediaId: '2IxROQ1',
+    cues: ['Con el hombro flexionado estiras la porcion larga: la que mas volumen aporta'],
+  },
+  {
+    id: 'press-frances',
+    name: { es: 'Press frances con mancuernas', en: 'dumbbell lying triceps extension' },
+    pattern: 'elbow-extension',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'triceps', factor: 1 }],
+    secondary: [],
+    mediaId: 'mpKZGWz',
+    cues: ['Codos apuntando arriba, no se abren'],
+  },
+  {
+    id: 'copa-triceps',
+    name: { es: 'Copa de triceps sentado', en: 'dumbbell seated triceps extension' },
+    pattern: 'elbow-extension',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'triceps', factor: 1 }],
+    secondary: [],
+    mediaId: 'kont8Ut',
+  },
+
+  /* ── Pierna: dominante de rodilla ─────────────────────────────────────── */
+  {
+    id: 'sentadilla-barra',
+    name: { es: 'Sentadilla con barra', en: 'barbell full squat' },
+    pattern: 'squat',
+    equipment: 'barbell',
+    primary: [
+      { muscle: 'quads', factor: 1 },
+      { muscle: 'glutes', factor: 1 },
+    ],
+    secondary: [
+      { muscle: 'hamstrings', factor: 0.25 },
+      { muscle: 'lower-back', factor: 0.5 },
+      { muscle: 'abs', factor: 0.25 },
+    ],
+    mediaId: 'qXTaZnJ',
+    cues: ['Profundidad hasta romper paralelo si la movilidad lo permite', 'Rodillas siguen la linea de los pies'],
+  },
+  {
+    id: 'sentadilla-maquina',
+    name: { es: 'Sentadilla hack en maquina', en: 'sled hack squat' },
+    pattern: 'squat',
+    equipment: 'machine',
+    primary: [{ muscle: 'quads', factor: 1 }],
+    secondary: [{ muscle: 'glutes', factor: 0.5 }],
+    mediaId: 'Qa55kX1',
+    cues: ['Pies mas bajos en la plataforma enfatiza cuadriceps'],
+  },
+  {
+    id: 'prensa-piernas',
+    name: { es: 'Prensa de piernas', en: 'sled 45 degree leg press' },
+    pattern: 'squat',
+    equipment: 'machine',
+    primary: [{ muscle: 'quads', factor: 1 }],
+    secondary: [{ muscle: 'glutes', factor: 0.5 }],
+    mediaId: '10Z2DXU',
+    cues: ['Rango completo sin despegar la lumbar del respaldo'],
+  },
+  {
+    id: 'extension-cuadriceps',
+    name: { es: 'Extension de cuadriceps', en: 'lever leg extension' },
+    pattern: 'knee-extension',
+    equipment: 'machine',
+    primary: [{ muscle: 'quads', factor: 1 }],
+    secondary: [],
+    mediaId: 'my33uHU',
+    cues: ['Pausa arriba, bajada controlada'],
+  },
+  {
+    id: 'zancada-mancuernas',
+    name: { es: 'Zancadas con mancuernas', en: 'dumbbell lunge' },
+    pattern: 'lunge',
+    equipment: 'dumbbell',
+    primary: [
+      { muscle: 'quads', factor: 1 },
+      { muscle: 'glutes', factor: 1 },
+    ],
+    secondary: [{ muscle: 'hamstrings', factor: 0.25 }],
+    mediaId: 'RRWFUcw',
+    isUnilateral: true,
+  },
+  {
+    id: 'sumo-mancuerna',
+    name: { es: 'Sentadilla goblet sumo', en: 'dumbbell goblet squat' },
+    pattern: 'squat',
+    equipment: 'dumbbell',
+    primary: [
+      { muscle: 'quads', factor: 1 },
+      { muscle: 'glutes', factor: 0.5 },
+    ],
+    secondary: [{ muscle: 'adductors', factor: 0.5 }],
+    mediaId: 'yn8yg1r',
+  },
+
+  /* ── Pierna: dominante de cadera ──────────────────────────────────────── */
+  {
+    id: 'peso-muerto-rumano-barra',
+    name: { es: 'Peso muerto rumano con barra', en: 'barbell romanian deadlift' },
+    pattern: 'hinge',
+    equipment: 'barbell',
+    primary: [
+      { muscle: 'hamstrings', factor: 1 },
+      { muscle: 'glutes', factor: 1 },
+    ],
+    secondary: [
+      { muscle: 'lower-back', factor: 0.5 },
+      { muscle: 'forearms', factor: 0.25 },
+    ],
+    mediaId: 'wQ2c4XD',
+    cues: ['Cadera atras, espalda neutra', 'Baja hasta notar el estiramiento, no mas'],
+  },
+  {
+    id: 'peso-muerto-rumano',
+    name: { es: 'Peso muerto rumano con mancuernas', en: 'dumbbell romanian deadlift' },
+    pattern: 'hinge',
+    equipment: 'dumbbell',
+    primary: [
+      { muscle: 'hamstrings', factor: 1 },
+      { muscle: 'glutes', factor: 1 },
+    ],
+    secondary: [{ muscle: 'lower-back', factor: 0.5 }],
+    mediaId: 'rR0LJzx',
+  },
+  {
+    id: 'curl-femoral',
+    name: { es: 'Curl femoral tumbado', en: 'lever lying leg curl' },
+    pattern: 'knee-flexion',
+    equipment: 'machine',
+    primary: [{ muscle: 'hamstrings', factor: 1 }],
+    secondary: [{ muscle: 'calves', factor: 0.25 }],
+    mediaId: '17lJ1kr',
+    cues: ['Contraccion maxima arriba, sin despegar la cadera'],
+  },
+  {
+    id: 'curl-femoral-sentado',
+    name: { es: 'Curl femoral sentado', en: 'lever seated leg curl' },
+    pattern: 'knee-flexion',
+    equipment: 'machine',
+    primary: [{ muscle: 'hamstrings', factor: 1 }],
+    secondary: [{ muscle: 'calves', factor: 0.25 }],
+    mediaId: 'Zg3XY7P',
+    cues: ['Sentado la cadera queda flexionada: mayor estiramiento del isquio'],
+  },
+  {
+    id: 'hip-thrust',
+    name: { es: 'Hip thrust', en: 'hip thrust' },
+    pattern: 'hip-thrust',
+    equipment: 'barbell',
+    primary: [{ muscle: 'glutes', factor: 1 }],
+    secondary: [{ muscle: 'hamstrings', factor: 0.5 }],
+    mediaId: 'Pjbc0Kt',
+    cues: ['Extension completa arriba, menton metido', 'El empuje sale del gluteo, no de la lumbar'],
+  },
+  {
+    id: 'abductores',
+    name: { es: 'Abductores en maquina', en: 'lever seated hip abduction' },
+    pattern: 'hip-abduction',
+    equipment: 'machine',
+    primary: [{ muscle: 'abductors', factor: 1 }],
+    secondary: [{ muscle: 'glutes', factor: 0.5 }],
+    mediaId: 'CHpahtl',
+    cues: ['Inclinar el torso adelante incide mas en el gluteo medio'],
+  },
+
+  /* ── Gemelos ──────────────────────────────────────────────────────────── */
+  {
+    id: 'elevacion-talones-pie',
+    name: { es: 'Elevacion de talones de pie', en: 'lever standing calf raise' },
+    pattern: 'calf-raise',
+    equipment: 'machine',
+    primary: [{ muscle: 'calves', factor: 1 }],
+    secondary: [],
+    mediaId: 'ykUOVze',
+    cues: ['De pie con rodilla extendida incide en el gastrocnemio', 'Pausa abajo en el estiramiento'],
+  },
+  {
+    id: 'elevacion-talones-sentado',
+    name: { es: 'Elevacion de talones sentado', en: 'lever seated calf raise' },
+    pattern: 'calf-raise',
+    equipment: 'machine',
+    primary: [{ muscle: 'calves', factor: 1 }],
+    secondary: [],
+    mediaId: 'bOOdeyc',
+    cues: ['Con la rodilla flexionada trabaja el soleo, que el de pie no cubre'],
+  },
+  {
+    id: 'elevacion-talones',
+    name: { es: 'Elevacion de talones con mancuernas', en: 'dumbbell standing calf raise' },
+    pattern: 'calf-raise',
+    equipment: 'dumbbell',
+    primary: [{ muscle: 'calves', factor: 1 }],
+    secondary: [],
+    mediaId: 'dPmaUaU',
+  },
+
+  /* ── Core ─────────────────────────────────────────────────────────────── */
+  {
+    id: 'plancha',
+    name: { es: 'Plancha abdominal', en: 'front plank' },
+    pattern: 'core-anti-extension',
+    equipment: 'bodyweight',
+    primary: [{ muscle: 'abs', factor: 1 }],
+    secondary: [{ muscle: 'obliques', factor: 0.5 }],
+    mediaId: 'CosupLu',
+    defaultMetric: 'seconds',
+    cues: ['Gluteo y core apretados, sin hundir la cadera'],
+  },
+  {
+    id: 'crunch-polea',
+    name: { es: 'Crunch en polea', en: 'cable kneeling crunch' },
+    pattern: 'core-flexion',
+    equipment: 'cable',
+    primary: [{ muscle: 'abs', factor: 1 }],
+    secondary: [{ muscle: 'obliques', factor: 0.25 }],
+    mediaId: 'WW95auq',
+    cues: ['Flexiona la columna, no la cadera'],
+  },
+  {
+    id: 'elevacion-piernas',
+    name: { es: 'Elevacion de piernas colgado', en: 'hanging leg raise' },
+    pattern: 'core-flexion',
+    equipment: 'bodyweight',
+    primary: [{ muscle: 'abs', factor: 1 }],
+    secondary: [
+      { muscle: 'obliques', factor: 0.25 },
+      { muscle: 'forearms', factor: 0.25 },
+    ],
+    mediaId: 'I3tsCnC',
+    cues: ['Retroversion pelvica al final: si no, trabaja el psoas'],
+  },
+]
+
+/** Catalogo validado. Si una entrada esta mal formada, falla al arrancar (deliberado). */
+export const CATALOG: Exercise[] = RAW.map((raw) => {
+  const parsed = exerciseSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw new Error(
+      `Ejercicio invalido en el catalogo "${raw.id}": ${parsed.error.issues.map((i) => i.message).join('; ')}`,
+    )
+  }
+  return parsed.data
+})
+
+export const CATALOG_BY_ID: Record<string, Exercise> = Object.fromEntries(
+  CATALOG.map((e) => [e.id, e]),
+)

@@ -1,0 +1,394 @@
+{
+  "schemaVersion": "1.0",
+  "id": "ul-ppl-5d-hipertrofia",
+  "name": "Upper/Lower + PPL — 5 dias",
+  "description": "Hibrido de tren superior/inferior con enfasis en fuerza los dos primeros dias y bloque Push/Pull/Legs orientado a hipertrofia el resto de la semana. Cada grupo muscular se estimula dos veces por semana, que es la frecuencia con mejor respaldo en la literatura para hipertrofia. Progresion doble con rampa de RIR y descarga en la semana final.",
+  "author": "Training Lab — metodologia al estilo Jeff Nippard",
+  "goal": "hypertrophy",
+  "experienceLevel": "intermediate",
+  "durationWeeks": 8,
+  "daysPerWeek": 5,
+  "tags": ["upper-lower", "ppl", "hipertrofia", "5 dias", "frecuencia 2x"],
+  "references": [
+    "Frecuencia 2x/semana por grupo muscular: Schoenfeld, Ogborn & Krieger (2016), meta-analisis de frecuencia y hipertrofia",
+    "Rango de 5-30 reps con proximidad al fallo suficiente produce hipertrofia similar: Schoenfeld et al. (2021)",
+    "Marco de landmarks de volumen (MEV/MAV/MRV): Renaissance Periodization, divulgado por Jeff Nippard"
+  ],
+  "progression": {
+    "type": "double-progression",
+    "incrementKg": { "upper": 2.5, "lower": 5, "isolation": 1.25 },
+    "rirRamp": [3, 3, 2, 2, 1, 1, 0, "deload"]
+  },
+  "deload": {
+    "week": "last",
+    "volumeMultiplier": 0.5,
+    "intensityMultiplier": 0.9
+  },
+  "days": [
+    {
+      "id": "d1-upper",
+      "name": "Upper — Fuerza",
+      "type": "upper",
+      "order": 1,
+      "focus": "Empuje y traccion pesados, rangos bajos",
+      "notes": "Dia mas pesado del tren superior. Descansos largos en los dos primeros ejercicios: el objetivo es carga, no bombeo.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d1-s1",
+              "exerciseId": "press-banca-barra",
+              "sets": 4,
+              "repRange": [5, 7],
+              "restSec": 180,
+              "warmupSets": 3,
+              "notes": "Movimiento principal. Sube peso solo cuando hagas 7 reps limpias en las 4 series.",
+              "substitutions": ["press-inclinado-mancuernas", "press-pecho-maquina"]
+            },
+            {
+              "slotId": "d1-s2",
+              "exerciseId": "dominadas",
+              "sets": 4,
+              "repRange": [6, 8],
+              "restSec": 150,
+              "warmupSets": 1,
+              "notes": "Si superas 8 reps limpias en todas las series, anade lastre.",
+              "substitutions": ["dominadas-asistidas", "jalon-amplio"]
+            },
+            {
+              "slotId": "d1-s3",
+              "exerciseId": "press-militar-mancuernas",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 120,
+              "substitutions": ["press-hombro-maquina"]
+            },
+            {
+              "slotId": "d1-s4",
+              "exerciseId": "remo-barra",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 120,
+              "notes": "Torso a 45 grados. Si la lumbar se resiente, cambia a remo con apoyo.",
+              "substitutions": ["remo-mancuerna", "remo-sentado-polea"]
+            },
+            {
+              "slotId": "d1-s5",
+              "exerciseId": "elevaciones-laterales",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "substitutions": ["elevaciones-laterales-polea"]
+            },
+            {
+              "slotId": "d1-s6",
+              "exerciseId": "curl-ez",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 90,
+              "substitutions": ["curl-barra", "curl-inclinado"]
+            },
+            {
+              "slotId": "d1-s7",
+              "exerciseId": "triceps-polea",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "substitutions": ["press-frances", "copa-triceps"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d2-lower",
+      "name": "Lower — Fuerza",
+      "type": "lower",
+      "order": 2,
+      "focus": "Sentadilla y bisagra de cadera pesadas",
+      "notes": "Prioriza la calidad tecnica de la sentadilla. Si llegas con fatiga alta del dia anterior, baja una serie antes que bajar el peso.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d2-s1",
+              "exerciseId": "sentadilla-barra",
+              "sets": 4,
+              "repRange": [5, 7],
+              "restSec": 210,
+              "warmupSets": 3,
+              "notes": "Movimiento principal del tren inferior.",
+              "substitutions": ["sentadilla-maquina", "prensa-piernas"]
+            },
+            {
+              "slotId": "d2-s2",
+              "exerciseId": "peso-muerto-rumano-barra",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 150,
+              "notes": "Baja solo hasta donde mantengas la espalda neutra.",
+              "substitutions": ["peso-muerto-rumano"]
+            },
+            {
+              "slotId": "d2-s3",
+              "exerciseId": "prensa-piernas",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "substitutions": ["sentadilla-maquina", "zancada-mancuernas"]
+            },
+            {
+              "slotId": "d2-s4",
+              "exerciseId": "curl-femoral",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "substitutions": ["curl-femoral-sentado"]
+            },
+            {
+              "slotId": "d2-s5",
+              "exerciseId": "elevacion-talones-pie",
+              "sets": 4,
+              "repRange": [10, 15],
+              "restSec": 60,
+              "notes": "Pausa de un segundo en el estiramiento de abajo.",
+              "substitutions": ["elevacion-talones-sentado", "elevacion-talones"]
+            },
+            {
+              "slotId": "d2-s6",
+              "exerciseId": "plancha",
+              "sets": 3,
+              "repRange": [30, 45],
+              "metric": "seconds",
+              "restSec": 45,
+              "substitutions": ["elevacion-piernas"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d3-push",
+      "name": "Push — Hipertrofia",
+      "type": "push",
+      "order": 3,
+      "focus": "Pecho, deltoides anterior y lateral, triceps",
+      "notes": "Rangos medios y altos, descansos mas cortos. Busca tension y estiramiento, no cargas maximas.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d3-s1",
+              "exerciseId": "press-inclinado-mancuernas",
+              "sets": 4,
+              "repRange": [8, 10],
+              "restSec": 150,
+              "warmupSets": 2,
+              "substitutions": ["press-banca-barra", "press-pecho-maquina"]
+            },
+            {
+              "slotId": "d3-s2",
+              "exerciseId": "press-pecho-maquina",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "substitutions": ["cruce-poleas", "aperturas-mancuernas"]
+            },
+            {
+              "slotId": "d3-s3",
+              "exerciseId": "press-hombro-maquina",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "substitutions": ["press-militar-mancuernas"]
+            },
+            {
+              "slotId": "d3-s4",
+              "exerciseId": "cruce-poleas",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "substitutions": ["aperturas-mancuernas"]
+            },
+            {
+              "slotId": "d3-s5",
+              "exerciseId": "elevaciones-laterales-polea",
+              "sets": 4,
+              "repRange": [12, 20],
+              "restSec": 45,
+              "notes": "El deltoides lateral tolera y necesita volumen alto. No busques peso.",
+              "substitutions": ["elevaciones-laterales"]
+            },
+            {
+              "slotId": "d3-s6",
+              "exerciseId": "triceps-sobre-cabeza",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "notes": "Con el brazo por encima de la cabeza estiras la porcion larga del triceps.",
+              "substitutions": ["copa-triceps", "press-frances"]
+            },
+            {
+              "slotId": "d3-s7",
+              "exerciseId": "fondos-paralelas",
+              "sets": 3,
+              "repRange": [8, 12],
+              "restSec": 90,
+              "substitutions": ["triceps-polea"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d4-pull",
+      "name": "Pull — Hipertrofia",
+      "type": "pull",
+      "order": 4,
+      "focus": "Dorsal, espalda alta, deltoides posterior, biceps",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d4-s1",
+              "exerciseId": "jalon-amplio",
+              "sets": 4,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 1,
+              "substitutions": ["dominadas", "dominadas-asistidas", "jalon-pecho"]
+            },
+            {
+              "slotId": "d4-s2",
+              "exerciseId": "remo-sentado-polea",
+              "sets": 4,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "substitutions": ["remo-mancuerna", "remo-cable", "remo-barra"]
+            },
+            {
+              "slotId": "d4-s3",
+              "exerciseId": "pullover-polea",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "notes": "Aisla el dorsal sin que el biceps sea el eslabon debil.",
+              "substitutions": ["pullover-mancuerna"]
+            },
+            {
+              "slotId": "d4-s4",
+              "exerciseId": "face-pull",
+              "sets": 4,
+              "repRange": [15, 20],
+              "restSec": 45,
+              "notes": "Deltoides posterior y salud del hombro. Tecnica sobre carga.",
+              "substitutions": ["remo-polea-amplio"]
+            },
+            {
+              "slotId": "d4-s5",
+              "exerciseId": "curl-inclinado",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "substitutions": ["curl-barra", "curl-cable"]
+            },
+            {
+              "slotId": "d4-s6",
+              "exerciseId": "curl-martillo",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "substitutions": ["curl-concentrado"]
+            },
+            {
+              "slotId": "d4-s7",
+              "exerciseId": "encogimientos",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "substitutions": ["remo-polea-amplio"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d5-legs",
+      "name": "Legs — Hipertrofia",
+      "type": "legs",
+      "order": 5,
+      "focus": "Cuadriceps, isquiotibiales, gluteos, gemelos y core",
+      "notes": "Segundo estimulo semanal de pierna, con maquinas y rangos mas altos para acumular volumen sin la fatiga sistemica de la sentadilla libre.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d5-s1",
+              "exerciseId": "sentadilla-maquina",
+              "sets": 4,
+              "repRange": [8, 12],
+              "restSec": 180,
+              "warmupSets": 2,
+              "substitutions": ["prensa-piernas", "sentadilla-barra"]
+            },
+            {
+              "slotId": "d5-s2",
+              "exerciseId": "peso-muerto-rumano",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "substitutions": ["peso-muerto-rumano-barra"]
+            },
+            {
+              "slotId": "d5-s3",
+              "exerciseId": "extension-cuadriceps",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "substitutions": ["prensa-piernas"]
+            },
+            {
+              "slotId": "d5-s4",
+              "exerciseId": "curl-femoral-sentado",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "substitutions": ["curl-femoral"]
+            },
+            {
+              "slotId": "d5-s5",
+              "exerciseId": "hip-thrust",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "substitutions": ["abductores", "sumo-mancuerna"]
+            },
+            {
+              "slotId": "d5-s6",
+              "exerciseId": "elevacion-talones-sentado",
+              "sets": 4,
+              "repRange": [12, 20],
+              "restSec": 45,
+              "notes": "Sentado incide en el soleo, que el de pie no cubre.",
+              "substitutions": ["elevacion-talones-pie", "elevacion-talones"]
+            },
+            {
+              "slotId": "d5-s7",
+              "exerciseId": "elevacion-piernas",
+              "sets": 3,
+              "repRange": [10, 15],
+              "restSec": 45,
+              "substitutions": ["crunch-polea", "plancha"]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "customExercises": []
+}
