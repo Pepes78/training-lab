@@ -48,6 +48,7 @@ interface AppState {
   removeRoutine: (id: string) => Promise<void>
   startCycle: (routineId: string, startDate?: string, weeks?: number) => Promise<void>
   finishCycle: (status: 'completed' | 'abandoned') => Promise<void>
+  removeCycle: (cycleId: string) => Promise<void>
 
   getOrCreateSession: (week: number, dayId: string, date?: string) => Promise<Session>
   updateSession: (s: Session) => Promise<void>
@@ -169,6 +170,13 @@ export const useApp = create<AppState>((set, get) => ({
     const { cycle } = get()
     if (!cycle) return
     await db.saveCycle({ ...cycle, status })
+    await get().refresh()
+  },
+
+  async removeCycle(cycleId) {
+    // Borrado en cascada: sin el, las series quedarian huerfanas y seguirian
+    // contando en el volumen y en los records.
+    await db.deleteCycle(cycleId)
     await get().refresh()
   },
 

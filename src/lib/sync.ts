@@ -101,10 +101,37 @@ export function getClient(url?: string, anonKey?: string): SupabaseClient | null
   if (client && clientKey === key) return client
 
   client = createClient(finalUrl, finalKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      /*
+       * PKCE y no el flujo implicito por defecto.
+       *
+       * El flujo implicito devuelve el token en el fragmento de la URL
+       * (#access_token=...), que es justo donde HashRouter guarda la ruta: la
+       * app interpretaria el token como una ruta y la sesion se perderia.
+       * PKCE devuelve ?code=... en la query, antes del #, y no hay colision.
+       */
+      flowType: 'pkce',
+      detectSessionInUrl: true,
+    },
   })
   clientKey = key
   return client
+}
+
+/**
+ * Limpia el ?code= de la barra de direcciones despues de canjear el enlace
+ * magico. Sin esto el codigo queda visible y se reenvia si recargas la pagina.
+ */
+export function cleanAuthParamsFromUrl() {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('code') && !url.searchParams.has('error')) return
+  url.searchParams.delete('code')
+  url.searchParams.delete('error')
+  url.searchParams.delete('error_description')
+  window.history.replaceState({}, '', url.toString())
 }
 
 export type SyncStatus = 'disabled' | 'offline' | 'signed-out' | 'syncing' | 'synced' | 'error'
@@ -180,7 +207,10 @@ export async function sync(url?: string, anonKey?: string): Promise<SyncResult> 
     return { status: 'offline', pushed: 0, pulled: 0, pending: (await listOutbox()).length }
   }
 
+  // getSession() espera a que el cliente haya canjeado el ?code= del enlace
+  // magico, asi que este es el momento seguro para limpiar la URL.
   const { data: sessionData } = await sb.auth.getSession()
+  cleanAuthParamsFromUrl()
   const userId = sessionData.session?.user.id
   if (!userId) {
     return {

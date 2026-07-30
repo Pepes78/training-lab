@@ -5,6 +5,10 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+# .env.production SI se versiona: solo contiene la URL del proyecto y la anon
+# key, que son publicas por diseno (acaban en el JS del navegador). Lo que
+# protege los datos es RLS. La service_role no debe estar nunca en un .env.
+!.env.production
 
 .vscode/*
 !.vscode/extensions.json

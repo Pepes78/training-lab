@@ -122,6 +122,61 @@ export async function activeCycle(): Promise<Cycle | undefined> {
   return all.find((c) => c.status === 'active')
 }
 
+export interface CycleContents {
+  sessions: number
+  sets: number
+  overrides: number
+}
+
+/** Cuenta lo que colgaria de un ciclo, para poder avisar antes de borrarlo. */
+export async function cycleContents(cycleId: string): Promise<CycleContents> {
+  const db = await getDB()
+  const sessions = await db.getAllFromIndex('sessions', 'by-cycle', cycleId)
+  const sessionIds = new Set(sessions.map((s) => s.id))
+  const allSets = await db.getAll('setLogs')
+  const overrides = await db.getAllFromIndex('weekOverrides', 'by-cycle', cycleId)
+  return {
+    sessions: sessions.length,
+    sets: allSets.filter((s) => sessionIds.has(s.sessionId) && !s.isWarmup).length,
+    overrides: overrides.length,
+  }
+}
+
+/**
+ * Borra un ciclo y TODO lo que cuelga de el: sesiones, series y sustituciones.
+ *
+ * El borrado en cascada es el punto entero de esta operacion. Quitar solo la
+ * fila del ciclo dejaria las series huerfanas, que seguirian sumando en el
+ * volumen semanal y en los records: exactamente lo que se quiere evitar al
+ * descartar un ciclo de pruebas.
+ */
+export async function deleteCycle(cycleId: string) {
+  const db = await getDB()
+  const sessions = await db.getAllFromIndex('sessions', 'by-cycle', cycleId)
+  const sessionIds = new Set(sessions.map((s) => s.id))
+
+  const allSets = await db.getAll('setLogs')
+  for (const set of allSets) {
+    if (!sessionIds.has(set.sessionId)) continue
+    await db.delete('setLogs', set.id)
+    await enqueue('setLogs', 'delete', { id: set.id })
+  }
+
+  for (const session of sessions) {
+    await db.delete('sessions', session.id)
+    await enqueue('sessions', 'delete', { id: session.id })
+  }
+
+  const overrides = await db.getAllFromIndex('weekOverrides', 'by-cycle', cycleId)
+  for (const o of overrides) {
+    await db.delete('weekOverrides', o.id)
+    await enqueue('weekOverrides', 'delete', { id: o.id })
+  }
+
+  await db.delete('cycles', cycleId)
+  await enqueue('cycles', 'delete', { id: cycleId })
+}
+
 /* ── Sesiones ──────────────────────────────────────────────────────────── */
 
 export async function saveSession(s: Session) {

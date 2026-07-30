@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp, useCatalog } from '@/store/useApp'
 import { allSlots, deloadWeek, GOAL_LABEL, LEVEL_LABEL, slotsOfDay, type Routine } from '@/types/routine'
+import type { Cycle } from '@/types/logs'
 import { Badge, Button, Card, NumberField, SectionTitle, Sheet } from '@/components/ui'
 import { formatLong, mondayOfCurrentWeek } from '@/lib/date'
+import { cycleContents, type CycleContents } from '@/lib/db'
 import { PROMPT_TEMPLATE } from '@/data/prompt-template'
 
 /* ============================================================================
@@ -19,6 +21,7 @@ export default function Routines() {
   const [importing, setImporting] = useState(false)
   const [detail, setDetail] = useState<Routine | null>(null)
   const [starting, setStarting] = useState<Routine | null>(null)
+  const [deletingCycle, setDeletingCycle] = useState<Cycle | null>(null)
 
   return (
     <div className="space-y-5">
@@ -47,7 +50,15 @@ export default function Routines() {
                 {cycle.targetWeeks} semanas desde el {formatLong(cycle.startDate)}
               </p>
             </div>
-            <FinishCycleButton />
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <FinishCycleButton />
+              <button
+                onClick={() => setDeletingCycle(cycle)}
+                className="text-[11px] font-medium text-[#a72c2c] hover:underline"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </Card>
       )}
@@ -94,7 +105,7 @@ export default function Routines() {
 
       {cycles.filter((c) => c.status !== 'active').length > 0 && (
         <Card>
-          <SectionTitle hint="Cerrados o abandonados. Sus datos siguen contando en la analitica.">
+          <SectionTitle hint="Cerrados o abandonados. Sus datos siguen contando en la analitica salvo que los elimines.">
             Ciclos anteriores
           </SectionTitle>
           <div className="space-y-1">
@@ -103,16 +114,28 @@ export default function Routines() {
               .sort((a, b) => b.startDate.localeCompare(a.startDate))
               .map((c) => (
                 <div key={c.id} className="flex items-center gap-3 py-1.5 text-[13px]">
-                  <span className="flex-1 text-ink">{c.routineSnapshot.name}</span>
-                  <span className="num text-[11px] text-ink-muted">{formatLong(c.startDate)}</span>
+                  <span className="min-w-0 flex-1 truncate text-ink">{c.routineSnapshot.name}</span>
+                  <span className="num shrink-0 text-[11px] text-ink-muted">
+                    {formatLong(c.startDate)}
+                  </span>
                   <Badge tone={c.status === 'completed' ? 'good' : 'neutral'}>
                     {c.status === 'completed' ? 'Completado' : 'Abandonado'}
                   </Badge>
+                  <button
+                    onClick={() => setDeletingCycle(c)}
+                    aria-label={`Eliminar el ciclo ${c.routineSnapshot.name}`}
+                    title="Eliminar ciclo y sus datos"
+                    className="shrink-0 px-1 text-[13px] text-ink-muted hover:text-[#d03b3b]"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
           </div>
         </Card>
       )}
+
+      <DeleteCycleSheet cycle={deletingCycle} onClose={() => setDeletingCycle(null)} />
 
       <ImportSheet open={importing} onClose={() => setImporting(false)} onImport={importRoutine} />
       <DetailSheet routine={detail} onClose={() => setDetail(null)} />
@@ -143,6 +166,89 @@ function FinishCycleButton() {
         Cancelar
       </Button>
     </div>
+  )
+}
+
+/* ── Eliminar un ciclo ─────────────────────────────────────────────────── */
+
+/**
+ * Confirmacion de borrado de ciclo.
+ *
+ * Es una accion destructiva e irreversible, asi que antes de pedir confirmacion
+ * se cuenta y se muestra exactamente lo que se va a perder. Un "estas seguro?"
+ * a secas no le da al usuario informacion para decidir.
+ */
+function DeleteCycleSheet({ cycle, onClose }: { cycle: Cycle | null; onClose: () => void }) {
+  const removeCycle = useApp((s) => s.removeCycle)
+  const [contents, setContents] = useState<CycleContents | null>(null)
+  const [working, setWorking] = useState(false)
+
+  useEffect(() => {
+    setContents(null)
+    if (cycle) void cycleContents(cycle.id).then(setContents)
+  }, [cycle])
+
+  if (!cycle) return null
+
+  const isActive = cycle.status === 'active'
+
+  return (
+    <Sheet open onClose={onClose} title="¿Eliminar este ciclo?">
+      <div className="space-y-4">
+        <div>
+          <div className="text-[15px] font-semibold text-ink">{cycle.routineSnapshot.name}</div>
+          <div className="num mt-0.5 text-[12px] text-ink-secondary">
+            Iniciado el {formatLong(cycle.startDate)} · {cycle.targetWeeks} semanas
+            {isActive && ' · en curso'}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[#f3cdcd] bg-[#fdf2f2] p-3">
+          <h4 className="text-[12px] font-semibold text-[#a72c2c]">
+            Se borrara de forma permanente
+          </h4>
+          {contents ? (
+            <ul className="mt-1.5 space-y-0.5 text-[12px] text-[#a72c2c]">
+              <li>· {contents.sessions} sesiones de entrenamiento</li>
+              <li>· {contents.sets} series registradas (peso, repeticiones y RIR)</li>
+              {contents.overrides > 0 && <li>· {contents.overrides} sustituciones de ejercicio</li>}
+            </ul>
+          ) : (
+            <p className="mt-1.5 text-[12px] text-[#a72c2c]">Calculando…</p>
+          )}
+          <p className="mt-2 text-[12px] leading-relaxed text-[#a72c2c]">
+            <strong className="font-semibold">Dejara de contar en tu progreso:</strong> desaparecera
+            del volumen semanal, de las graficas de fuerza, de los records y de la adherencia. Esta
+            accion no se puede deshacer.
+          </p>
+        </div>
+
+        <p className="text-[12px] leading-relaxed text-ink-secondary">
+          La plantilla de la rutina <strong className="font-semibold text-ink">no</strong> se borra:
+          seguira en tu lista y podras volver a empezarla cuando quieras.
+          {isActive && ' Al ser el ciclo en curso, te quedaras sin ciclo activo.'}
+        </p>
+
+        <div className="flex gap-2">
+          <Button className="flex-1" onClick={onClose} disabled={working}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            className="flex-1"
+            disabled={working}
+            onClick={async () => {
+              setWorking(true)
+              await removeCycle(cycle.id)
+              setWorking(false)
+              onClose()
+            }}
+          >
+            {working ? 'Eliminando…' : 'Si, eliminar'}
+          </Button>
+        </div>
+      </div>
+    </Sheet>
   )
 }
 

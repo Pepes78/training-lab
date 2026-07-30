@@ -103,6 +103,41 @@ Para sincronizar móvil ↔ PC:
 > política exige `auth.uid() = user_id`. Sin RLS, cualquiera con la clave puede leer y
 > borrar toda la tabla. El `schema.sql` la deja activada; no la desactives.
 
+## Compartirla con más gente
+
+**La app ya es multiusuario.** No hace falta cambiar el modelo de datos: todas las tablas
+llevan `user_id` y la política RLS es `auth.uid() = user_id`, así que varias personas
+pueden usar el **mismo** proyecto de Supabase viendo cada una solo lo suyo. Se registran
+con su correo, y a partir de ahí sus rutinas, ciclos y métricas son suyos.
+
+Lo único que hay que preparar es no obligar a cada uno a pegar la URL y la clave a mano:
+
+1. Crea `.env.production` en la raíz (ver [`.env.example`](.env.example)) con
+   `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+2. Commitea el archivo. **Sí, al repo público**: la `anon key` acaba en el JavaScript del
+   navegador de todos modos, así que esconderla no aporta nada. Lo que protege los datos
+   es RLS. La que **nunca** debe salir del panel de Supabase es la `service_role`.
+3. A partir de ahí tus amigos solo entran a la URL, la instalan y ponen su correo.
+
+Alternativa si prefieres no commitear las claves: el workflow de despliegue ya lee los
+secretos `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` del repositorio.
+
+### Límites reales del plan gratuito
+
+| | |
+|---|---|
+| **Correos de acceso** | El SMTP compartido de Supabase va muy limitado (unos pocos envíos por hora). Con 3 o 4 amigos se nota; a partir de ahí configura un SMTP propio — Resend o Brevo tienen plan gratuito suficiente. **Es el primer cuello de botella que te vas a encontrar.** |
+| **Pausa por inactividad** | Los proyectos gratuitos se pausan tras ~1 semana sin actividad. Con gente usándolo no ocurre. |
+| **Base de datos** | 500 MB. Un año de entrenamiento ocupa del orden de un mega por persona: no es una preocupación. |
+
+### Lo que NO está resuelto
+
+- **Compartir rutinas entre usuarios.** Hoy se hace exportando el JSON y pasándoselo.
+  Un catálogo compartido necesitaría una tabla de rutinas públicas con su propia política
+  RLS de solo lectura.
+- **Nada social**: ni clasificaciones, ni comparativas, ni seguir a otros.
+- **Sin panel de administración**: gestionar usuarios se hace desde el panel de Supabase.
+
 ## Sobre las referencias de volumen
 
 Las referencias MEV/MAV/MRV que usa la pantalla de volumen son **heurísticas**, no ciencia
