@@ -5,6 +5,7 @@ import { VOLUME_LANDMARKS } from '@/data/volume-landmarks'
 import { Badge, Button, Card, NumberField, SectionTitle } from '@/components/ui'
 import { exportAll, importAll, type Backup } from '@/lib/db'
 import { currentUserEmail, signInWithEmail, signOut } from '@/lib/sync'
+import { formatBytes, isIOS, requestPersistence, type StorageStatus } from '@/lib/storage'
 import { useEffect } from 'react'
 
 /* ============================================================================
@@ -172,6 +173,9 @@ export default function Settings() {
         </div>
       </Card>
 
+      {/* ── Estado del almacenamiento ── */}
+      <StorageCard />
+
       {/* ── Copias de seguridad ── */}
       <Card>
         <SectionTitle hint="Tus datos son tuyos y salen de aqui sin ataduras">
@@ -229,6 +233,94 @@ export default function Settings() {
         </p>
       </Card>
     </div>
+  )
+}
+
+function StorageCard() {
+  const [status, setStatus] = useState<StorageStatus | null>(null)
+
+  useEffect(() => {
+    void requestPersistence().then(setStatus)
+  }, [])
+
+  if (!status) return null
+
+  const ios = isIOS()
+
+  // Tres estados reales, sin adornos:
+  //   riesgo      iOS en pestana de Safari: borrado garantizado a los 7 dias
+  //   garantizado el navegador se ha comprometido a no desalojar los datos
+  //   sin-garantia no hay borrado por inactividad, pero tampoco compromiso
+  //                frente a una limpieza por falta de espacio
+  const level: 'riesgo' | 'garantizado' | 'sin-garantia' =
+    ios && !status.installed ? 'riesgo' : status.persisted ? 'garantizado' : 'sin-garantia'
+
+  const badge = {
+    riesgo: { tone: 'warning' as const, icon: '!', text: 'En riesgo' },
+    garantizado: { tone: 'good' as const, icon: '✓', text: 'Garantizado' },
+    'sin-garantia': { tone: 'neutral' as const, icon: '·', text: 'Sin garantia' },
+  }[level]
+
+  return (
+    <Card>
+      <SectionTitle
+        hint="Donde viven tus datos mientras no haya sincronizacion"
+        action={
+          <Badge tone={badge.tone} icon={badge.icon}>
+            {badge.text}
+          </Badge>
+        }
+      >
+        Almacenamiento en este dispositivo
+      </SectionTitle>
+
+      <dl className="space-y-1.5 text-[13px]">
+        <div className="flex justify-between gap-3">
+          <dt className="text-ink-secondary">Instalada en pantalla de inicio</dt>
+          <dd className="font-medium text-ink">{status.installed ? 'Si' : 'No'}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-ink-secondary">Almacenamiento persistente</dt>
+          <dd className="font-medium text-ink">
+            {status.unsupported ? 'No soportado' : status.persisted ? 'Concedido' : 'No concedido'}
+          </dd>
+        </div>
+        {status.usage !== undefined && (
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-secondary">Espacio usado</dt>
+            <dd className="num font-medium text-ink">
+              {formatBytes(status.usage)}
+              {status.quota ? ` de ${formatBytes(status.quota)}` : ''}
+            </dd>
+          </div>
+        )}
+      </dl>
+
+      {ios && !status.installed && (
+        <p className="mt-3 rounded-lg bg-[#fff8e6] px-3 py-2 text-[12px] leading-relaxed text-[#8a6200]">
+          Estas en Safari como pestana normal. Safari borra el almacenamiento de un sitio tras 7
+          dias sin abrirlo. Pulsa <strong>Compartir → Anadir a pantalla de inicio</strong>: las apps
+          instaladas quedan exentas de esa regla.
+        </p>
+      )}
+
+      {ios && status.installed && (
+        <p className="mt-3 rounded-lg bg-[#eefaee] px-3 py-2 text-[12px] leading-relaxed text-[#0a7a0a]">
+          Instalada en la pantalla de inicio, asi que iOS no aplica el borrado por inactividad. Aun
+          asi, desinstalarla borra los datos: configura la sincronizacion o exporta una copia de vez
+          en cuando.
+        </p>
+      )}
+
+      {!ios && level === 'sin-garantia' && (
+        <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-[12px] leading-relaxed text-ink-secondary">
+          El navegador no ha concedido almacenamiento persistente, algo habitual hasta que usas la
+          app con cierta regularidad. Aqui no hay borrado por inactividad, pero si el dispositivo se
+          queda sin espacio el navegador puede liberar estos datos. La sincronizacion o una copia
+          exportada lo cubren.
+        </p>
+      )}
+    </Card>
   )
 }
 

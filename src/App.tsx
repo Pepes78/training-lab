@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import clsx from 'clsx'
 import { useApp } from '@/store/useApp'
+import { requestPersistence } from '@/lib/storage'
+import { StorageWarning } from '@/components/StorageWarning'
 import Dashboard from '@/pages/Dashboard'
 import Train from '@/pages/Train'
 import Volume from '@/pages/Volume'
@@ -25,6 +27,9 @@ export default function App() {
 
   useEffect(() => {
     void init()
+    // Pedir al navegador que no desaloje IndexedDB. Silencioso: si lo deniega,
+    // el aviso de StorageWarning explica que hacer.
+    void requestPersistence()
   }, [init])
 
   // Al recuperar la conexion, vaciar la cola pendiente sin que el usuario haga nada.
@@ -88,6 +93,7 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 pt-5 pb-24 sm:pb-10">
+        <StorageWarning />
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/entrenar" element={<Train />} />
