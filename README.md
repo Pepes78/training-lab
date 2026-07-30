@@ -126,8 +126,11 @@ Lo único que hay que preparar es no obligar a cada uno a pegar la URL y la clav
    es RLS. La que **nunca** debe salir del panel de Supabase es la **secret key**.
 3. A partir de ahí tus amigos solo entran a la URL, la instalan y ponen su correo.
 
-Alternativa si prefieres no commitear las claves: el workflow de despliegue ya lee los
-secretos `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` del repositorio.
+> ⚠️ Si en su lugar prefieres usar **secretos de GitHub**, añádelos al workflow *y quita
+> el `.env.production`*, pero no mezcles ambos: Vite da prioridad a las variables de
+> entorno reales sobre los archivos `.env`, y un secreto que no existe se expande a
+> cadena vacía. El resultado es una app desplegada sin conexión y sin ningún error
+> visible en el build.
 
 ### Límites reales del plan gratuito
 
@@ -136,6 +139,20 @@ secretos `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` del repositorio.
 | **Correos de acceso** | El SMTP compartido de Supabase va muy limitado (unos pocos envíos por hora). Con 3 o 4 amigos se nota; a partir de ahí configura un SMTP propio — Resend o Brevo tienen plan gratuito suficiente. **Es el primer cuello de botella que te vas a encontrar.** |
 | **Pausa por inactividad** | Los proyectos gratuitos se pausan tras ~1 semana sin actividad. Con gente usándolo no ocurre. |
 | **Base de datos** | 500 MB. Un año de entrenamiento ocupa del orden de un mega por persona: no es una preocupación. |
+
+### Limitación conocida de la sincronización
+
+Los **borrados no se propagan hacia atrás**. Si eliminas un ciclo en el móvil, la fila
+desaparece del servidor, pero un PC que ya tuviera ese ciclo descargado lo conserva: la
+bajada solo añade y actualiza filas, nunca borra las que faltan.
+
+Es deliberado, porque la alternativa ingenua —«borra en local todo lo que no esté en el
+servidor»— destruiría los datos creados sin conexión que aún no se han subido. La
+solución correcta son *tombstones* (marcar como borrado en lugar de eliminar la fila) y
+está sin implementar.
+
+Mientras tanto: si borras algo en un dispositivo y quieres verlo desaparecer en otro,
+bórralo también allí.
 
 ### Lo que NO está resuelto
 

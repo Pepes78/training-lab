@@ -28,14 +28,14 @@ jobs:
 
       - run: npm ci
 
-      # tsc corre dentro de `npm run build`: un error de tipos rompe el despliegue
+      # tsc corre dentro de `npm run build`: un error de tipos rompe el despliegue.
+      #
+      # La configuracion de Supabase se toma de .env.production, que esta en el
+      # repositorio. NO declarar aqui VITE_SUPABASE_* desde secretos: Vite da
+      # prioridad a las variables de entorno reales sobre los archivos .env, y un
+      # secreto inexistente se expande a cadena vacia, con lo que pisaria la
+      # configuracion buena y desplegaria la app sin conexion.
       - run: npm run build
-        env:
-          # Opcional. Si se definen como secretos del repo, la app queda preconfigurada
-          # y no hay que pegar la URL y la clave a mano en cada dispositivo.
-          # La anon key es publica por diseno; lo que protege los datos es RLS.
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
