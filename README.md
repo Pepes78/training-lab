@@ -97,7 +97,40 @@ Para sincronizar móvil ↔ PC:
 2. SQL Editor → pega y ejecuta [`supabase/schema.sql`](supabase/schema.sql).
 3. En la app: **Ajustes → Sincronización**, pega la **Project URL** y la **publishable key**
    del proyecto (Project Settings → API).
-4. Inicia sesión con tu correo (enlace mágico, sin contraseñas).
+4. **Authentication → URL Configuration**: pon la URL de la app como *Site URL* y añádela
+   también a *Redirect URLs*.
+5. **Authentication → Email Templates → Magic Link**: añade `{{ .Token }}` a la plantilla
+   (ver más abajo). Sin esto el correo llega sin código y no se puede entrar.
+6. Inicia sesión con tu correo. Sin contraseñas.
+
+### Por qué código y no enlace mágico
+
+En iOS, **una app añadida a la pantalla de inicio y Safari son contextos de almacenamiento
+separados**. Si pides el acceso desde la app instalada, el verificador PKCE se guarda ahí,
+pero al pulsar el enlace Mail lo abre en Safari, que no lo tiene: el canje falla. Y aunque
+funcionara, la sesión quedaría creada en Safari y no en la app instalada, que es justo
+donde se entrena.
+
+Con un código de seis dígitos no hay redirección ni cambio de contexto. Para que el correo
+lo incluya, la plantilla **Magic Link** debe contener `{{ .Token }}`:
+
+```html
+<h2>Acceso a Training Lab</h2>
+<p>Tu código de acceso es:</p>
+<p style="font-size:28px;letter-spacing:6px;font-weight:700">{{ .Token }}</p>
+<p>Caduca en una hora. Si no lo has pedido tú, ignora este correo.</p>
+<p style="color:#888;font-size:12px">También puedes entrar desde este enlace, pero solo
+funciona en el mismo navegador desde el que lo pediste:
+<a href="{{ .ConfirmationURL }}">acceder</a></p>
+```
+
+### El límite de correos
+
+El SMTP compartido de Supabase permite **muy pocos envíos por hora** y devuelve
+`email rate limit exceeded`. Es suficiente para el uso normal (se entra una vez por
+dispositivo y la sesión se renueva sola), pero molesta al hacer pruebas. Si vas a invitar
+gente, configura un SMTP propio en **Project Settings → Authentication → SMTP Settings**;
+Resend y Brevo tienen plan gratuito de sobra.
 
 > **Qué clave es cuál.** Supabase renombró las claves: la **publishable key**
 > (`sb_publishable_…`) es la que antes se llamaba *anon*, y la **secret key** es la antigua

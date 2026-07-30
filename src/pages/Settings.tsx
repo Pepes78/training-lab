@@ -4,7 +4,15 @@ import { MUSCLES, MUSCLE_LABEL } from '@/types/catalog'
 import { VOLUME_LANDMARKS } from '@/data/volume-landmarks'
 import { Badge, Button, Card, NumberField, SectionTitle } from '@/components/ui'
 import { exportAll, importAll, type Backup } from '@/lib/db'
-import { currentUserEmail, envConfig, hasEnvConfig, signInWithEmail, signOut } from '@/lib/sync'
+import {
+  currentUserEmail,
+  describeAuthError,
+  envConfig,
+  hasEnvConfig,
+  signInWithEmail,
+  signOut,
+  verifyEmailCode,
+} from '@/lib/sync'
 import { formatBytes, isIOS, requestPersistence, type StorageStatus } from '@/lib/storage'
 import { useEffect } from 'react'
 
@@ -16,7 +24,11 @@ export default function Settings() {
   const { settings, updateSettings, runSync, syncResult, refresh } = useApp()
   const [email, setEmail] = useState('')
   const [authMsg, setAuthMsg] = useState('')
+  const [authError, setAuthError] = useState(false)
   const [sending, setSending] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [verifying, setVerifying] = useState(false)
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
 
   // Lo guardado en el dispositivo manda sobre lo incrustado en el build, para
@@ -114,9 +126,10 @@ export default function Settings() {
           ) : configured ? (
             <>
               <p className="text-[13px] leading-relaxed text-ink-secondary">
-                Escribe tu correo y te llegara un enlace de acceso. No hay contrasenas y no
+                Escribe tu correo y te llegara un codigo de seis digitos. No hay contrasenas y no
                 necesitas cuenta de Supabase: eso es solo el panel de administracion.
               </p>
+
               <div className="flex gap-2">
                 <input
                   type="email"
@@ -125,27 +138,91 @@ export default function Settings() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@correo.com"
-                  className="h-11 flex-1 rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+                  disabled={codeSent}
+                  className="h-11 flex-1 rounded-lg border border-hairline bg-white px-3 text-[13px] text-ink disabled:bg-surface-sunken disabled:text-ink-secondary focus:border-accent focus:outline-none"
                 />
                 <Button
-                  variant="primary"
+                  variant={codeSent ? 'secondary' : 'primary'}
                   onClick={async () => {
                     setAuthMsg('')
+                    setAuthError(false)
                     setSending(true)
                     try {
                       await signInWithEmail(email, effectiveUrl, effectiveKey)
-                      setAuthMsg('Enlace enviado. Abrelo desde este mismo dispositivo.')
+                      setCodeSent(true)
+                      setAuthMsg('Codigo enviado. Revisa tu correo, tambien la carpeta de spam.')
                     } catch (e) {
-                      setAuthMsg(e instanceof Error ? e.message : 'No se pudo enviar el enlace')
+                      setAuthError(true)
+                      setAuthMsg(describeAuthError(e))
                     }
                     setSending(false)
                   }}
                   // Solo depende del correo: la conexion ya esta resuelta
                   disabled={!email.includes('@') || sending}
                 >
-                  {sending ? 'Enviando…' : 'Enviar enlace'}
+                  {sending ? 'Enviando…' : codeSent ? 'Reenviar' : 'Enviar codigo'}
                 </Button>
               </div>
+
+              {codeSent && (
+                <div className="rounded-lg border border-hairline bg-surface-sunken p-3">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-muted">
+                      Codigo del correo
+                    </span>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="123456"
+                        className="num h-11 flex-1 rounded-lg border border-hairline bg-white px-3 text-center text-[18px] tracking-[0.3em] text-ink focus:border-accent focus:outline-none"
+                      />
+                      <Button
+                        variant="primary"
+                        disabled={code.length < 6 || verifying}
+                        onClick={async () => {
+                          setAuthMsg('')
+                          setAuthError(false)
+                          setVerifying(true)
+                          try {
+                            await verifyEmailCode(email, code, effectiveUrl, effectiveKey)
+                            setCodeSent(false)
+                            setCode('')
+                            setAuthMsg('Sesion iniciada. Sincronizando…')
+                            await runSync()
+                          } catch (e) {
+                            setAuthError(true)
+                            setAuthMsg(describeAuthError(e))
+                          }
+                          setVerifying(false)
+                        }}
+                      >
+                        {verifying ? 'Entrando…' : 'Entrar'}
+                      </Button>
+                    </div>
+                  </label>
+                  <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">
+                    Si el correo solo trae un enlace y no un codigo, hay que anadir{' '}
+                    <code>{'{{ .Token }}'}</code> a la plantilla en Supabase: Authentication → Email
+                    Templates → Magic Link.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCodeSent(false)
+                      setCode('')
+                      setAuthMsg('')
+                      setAuthError(false)
+                    }}
+                    className="mt-2 text-[11px] font-medium text-accent hover:underline"
+                  >
+                    Usar otro correo
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <p className="rounded-lg bg-[#fff8e6] px-3 py-2.5 text-[12px] leading-relaxed text-[#8a6200]">
@@ -154,7 +231,17 @@ export default function Settings() {
             </p>
           )}
 
-          {authMsg && <p className="text-[12px] text-ink-secondary">{authMsg}</p>}
+          {authMsg && (
+            <p
+              className={
+                authError
+                  ? 'rounded-lg border border-[#f3cdcd] bg-[#fdf2f2] px-3 py-2 text-[12px] leading-relaxed text-[#a72c2c]'
+                  : 'text-[12px] leading-relaxed text-ink-secondary'
+              }
+            >
+              {authMsg}
+            </p>
+          )}
 
           {configured && (
             <div className="flex items-center gap-3">

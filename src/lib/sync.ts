@@ -261,15 +261,78 @@ export async function sync(url?: string, anonKey?: string): Promise<SyncResult> 
   }
 }
 
-/** Envia un enlace magico al correo. No se manejan contrasenas en ningun momento. */
+/* ============================================================================
+ *  Acceso por codigo de un solo uso
+ * ----------------------------------------------------------------------------
+ *  POR QUE CODIGO Y NO ENLACE MAGICO
+ *
+ *  En iOS, una app anadida a la pantalla de inicio y Safari son contextos de
+ *  almacenamiento separados. Al pedir el acceso desde la app instalada, el
+ *  verificador PKCE se guarda ahi; pero al pulsar el enlace, Mail lo abre en
+ *  Safari, que no tiene ese verificador, y el canje falla.
+ *
+ *  Y aunque no fallara, la sesion quedaria creada en Safari y no en la app
+ *  instalada, que es justo donde se entrena. El enlace magico no puede
+ *  funcionar bien en una PWA de iOS.
+ *
+ *  Con un codigo de seis digitos no hay redireccion ni cambio de contexto: se
+ *  lee en el correo y se teclea en la misma ventana que lo pidio.
+ * ========================================================================== */
+
+/** Pide un codigo de acceso por correo. No se manejan contrasenas en ningun momento. */
 export async function signInWithEmail(email: string, url?: string, anonKey?: string) {
   const sb = getClient(url, anonKey)
   if (!sb) throw new Error('Supabase no esta configurado')
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    options: {
+      // Se mantiene por si el usuario prefiere pulsar el enlace desde el mismo
+      // navegador en que lo pidio (en escritorio si funciona).
+      emailRedirectTo: window.location.origin + window.location.pathname,
+      shouldCreateUser: true,
+    },
   })
   if (error) throw error
+}
+
+/** Canjea el codigo de seis digitos por una sesion, sin salir de la app. */
+export async function verifyEmailCode(
+  email: string,
+  token: string,
+  url?: string,
+  anonKey?: string,
+) {
+  const sb = getClient(url, anonKey)
+  if (!sb) throw new Error('Supabase no esta configurado')
+  const { error } = await sb.auth.verifyOtp({
+    email,
+    token: token.trim(),
+    type: 'email',
+  })
+  if (error) throw error
+}
+
+/** Traduce los errores de Supabase a algo accionable en castellano. */
+export function describeAuthError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e)
+  const m = raw.toLowerCase()
+
+  if (m.includes('rate limit') || m.includes('too many requests')) {
+    return 'Limite de correos alcanzado. El servidor gratuito de Supabase permite muy pocos envios por hora: espera un rato o configura un SMTP propio.'
+  }
+  if (m.includes('token has expired') || m.includes('expired')) {
+    return 'El codigo ha caducado. Pide uno nuevo.'
+  }
+  if (m.includes('invalid') && m.includes('token')) {
+    return 'Codigo incorrecto. Revisa que sean los seis digitos del ultimo correo recibido.'
+  }
+  if (m.includes('code verifier') || m.includes('both auth code')) {
+    return 'El enlace se abrio en un navegador distinto al que lo pidio. Usa el codigo de seis digitos en lugar del enlace.'
+  }
+  if (m.includes('signups not allowed') || m.includes('not authorized')) {
+    return 'El registro esta desactivado en el proyecto de Supabase (Authentication → Providers → Email).'
+  }
+  return raw
 }
 
 export async function signOut(url?: string, anonKey?: string) {
