@@ -7,6 +7,7 @@ import { Badge, Button, Card, NumberField, SectionTitle, Sheet } from '@/compone
 import { formatLong, mondayOfCurrentWeek } from '@/lib/date'
 import { cycleContents, type CycleContents } from '@/lib/db'
 import { PROMPT_TEMPLATE } from '@/data/prompt-template'
+import { RoutineWizard } from '@/components/RoutineWizard'
 
 /* ============================================================================
  *  Rutinas
@@ -19,6 +20,7 @@ import { PROMPT_TEMPLATE } from '@/data/prompt-template'
 export default function Routines() {
   const { routines, cycle, cycles, startCycle, removeRoutine, importRoutine } = useApp()
   const [importing, setImporting] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [detail, setDetail] = useState<Routine | null>(null)
   const [starting, setStarting] = useState<Routine | null>(null)
   const [deletingCycle, setDeletingCycle] = useState<Cycle | null>(null)
@@ -33,9 +35,43 @@ export default function Routines() {
             plantilla queda congelada dentro para que el historial nunca se descuadre.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setImporting(true)}>
-          Importar
-        </Button>
+      </div>
+
+      {/* Dos maneras de conseguir una rutina, deliberadamente al mismo nivel:
+          el asistente resuelve el caso comun sin salir de la app, y la
+          importacion permite pedirle a Claude algo que el generador no cubre. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          onClick={() => setWizardOpen(true)}
+          className="card p-4 text-left transition-colors hover:bg-surface-sunken"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[18px]" aria-hidden>
+              ✨
+            </span>
+            <span className="text-[14px] font-semibold text-ink">Crear a medida</span>
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
+            Responde seis preguntas y se genera una rutina con tu material, tus dias y tus
+            limitaciones.
+          </p>
+        </button>
+
+        <button
+          onClick={() => setImporting(true)}
+          className="card p-4 text-left transition-colors hover:bg-surface-sunken"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[18px]" aria-hidden>
+              ⇥
+            </span>
+            <span className="text-[14px] font-semibold text-ink">Importar de Claude</span>
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
+            Copia el prompt, pidesela en otra conversacion con todo el detalle que quieras y pega
+            el JSON aqui.
+          </p>
+        </button>
       </div>
 
       {cycle && (
@@ -134,6 +170,8 @@ export default function Routines() {
           </div>
         </Card>
       )}
+
+      <RoutineWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
 
       <DeleteCycleSheet cycle={deletingCycle} onClose={() => setDeletingCycle(null)} />
 

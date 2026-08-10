@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { useApp, useCatalog, useCurrentWeek, setsOfWeek } from '@/store/useApp'
 import { BodyweightChart, E1RMChart, WeeklySetsChart } from '@/components/charts'
 import { Button, Card, EmptyState, SectionTitle, StatTile, Select } from '@/components/ui'
-import { changeOver, latest, metricPoints, weeklyTrend } from '@/lib/stats'
+import { changeOver, latest, metricPoints, movingAverage, weeklyTrend } from '@/lib/stats'
 import { estimate1RM } from '@/lib/e1rm'
+import { tonnageFact, totalTonnage, weightChangeFact, type FunFact } from '@/lib/milestones'
+import { FunFactList } from '@/components/FunFacts'
 import { slotsOfDay } from '@/types/routine'
 import { formatLong } from '@/lib/date'
 
@@ -87,6 +89,41 @@ export default function Dashboard() {
     ? setsOfWeek(sessions, setLogs, cycle.id, week).filter((s) => !s.isWarmup && s.reps > 0).length
     : 0
 
+  /*
+   * Comparativas. El cambio de peso se calcula sobre la MEDIA MOVIL, no sobre
+   * lecturas sueltas: celebrar una bajada que en realidad era agua seria
+   * desinformar.
+   */
+  const facts = useMemo(() => {
+    const out: FunFact[] = []
+    const bodyweight = latest(bwPoints)?.value
+
+    if (cycle) {
+      const weekSets = setsOfWeek(sessions, setLogs, cycle.id, week)
+      const t = tonnageFact(totalTonnage(weekSets), bodyweight)
+      if (t) out.push({ ...t, headline: `${t.headline} esta semana` })
+    }
+
+    const smoothed = movingAverage(bwPoints, 7).filter((p) => p.avg !== null)
+    if (smoothed.length >= 2) {
+      const last = smoothed[smoothed.length - 1].avg!
+      const target = new Date(smoothed[smoothed.length - 1].date).getTime() - 30 * 86_400_000
+      let ref = smoothed[0]
+      let bestDiff = Infinity
+      for (const p of smoothed.slice(0, -1)) {
+        const diff = Math.abs(new Date(p.date).getTime() - target)
+        if (diff < bestDiff) {
+          bestDiff = diff
+          ref = p
+        }
+      }
+      const w = weightChangeFact(last - ref.avg!, bodyweight ?? 75)
+      if (w) out.push({ ...w, headline: `${w.headline} en 30 dias` })
+    }
+
+    return out
+  }, [cycle, sessions, setLogs, week, bwPoints])
+
   if (!cycle && metrics.length === 0 && setLogs.length === 0) {
     return (
       <EmptyState
@@ -143,6 +180,13 @@ export default function Dashboard() {
           hint="Registro manual"
         />
       </div>
+
+      {facts.length > 0 && (
+        <div>
+          <SectionTitle hint="Para que las cifras signifiquen algo">En perspectiva</SectionTitle>
+          <FunFactList facts={facts} />
+        </div>
+      )}
 
       <Card>
         <SectionTitle hint="Los puntos son la bascula diaria; la linea es la unica lectura fiable">

@@ -202,6 +202,12 @@ export const exerciseSchema = z.object({
   cues: z.array(z.string()).default([]),
   /** Nombres alternativos, usados por el buscador. */
   aliases: z.array(z.string()).default([]),
+  /**
+   * Version facilitada de un movimiento (asistida, con apoyo, con banda). El
+   * generador solo la propone de entrada a principiantes: para el resto es un
+   * paso atras, aunque siga estando disponible como sustituto.
+   */
+  isRegression: z.boolean().default(false),
   /** true para los ejercicios que ha creado el usuario, no los de serie. */
   isCustom: z.boolean().default(false),
 })

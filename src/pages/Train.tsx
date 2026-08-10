@@ -8,6 +8,8 @@ import type { SetLog } from '@/types/logs'
 import { suggestNext } from '@/lib/progression'
 import { rankSubstitutions } from '@/lib/substitutions'
 import { estimate1RM } from '@/lib/e1rm'
+import { summarizeSession } from '@/lib/milestones'
+import { FunFactList } from '@/components/FunFacts'
 import { Badge, Button, Card, EmptyState, NumberField, Sheet } from '@/components/ui'
 import { ExerciseDemo } from '@/components/ExerciseDemo'
 import { RestTimer } from '@/components/RestTimer'
@@ -161,9 +163,13 @@ export default function Train() {
         })}
       </div>
 
-      {/* Cerrar sesion */}
-      {session && session.status !== 'completed' && sessionSets.length > 0 && (
-        <FinishSession sessionId={session.id} />
+      {/* Cerrar sesion, o resumen si ya esta cerrada */}
+      {session && sessionSets.length > 0 && (
+        session.status === 'completed' ? (
+          <SessionDone sets={sessionSets} />
+        ) : (
+          <FinishSession sessionId={session.id} sets={sessionSets} />
+        )
       )}
 
       <ExerciseDemo
@@ -429,14 +435,52 @@ function ExerciseCard({
 
 /* ── Cerrar sesion ─────────────────────────────────────────────────────── */
 
-function FinishSession({ sessionId }: { sessionId: string }) {
-  const { sessions, updateSession } = useApp()
+/** Lo que se ha movido en la sesion, traducido a algo imaginable. */
+function SessionDone({ sets }: { sets: SetLog[] }) {
+  const metrics = useApp((s) => s.metrics)
+  const bodyweight = useMemo(() => {
+    const bw = metrics.filter((m) => m.metric === 'bodyweight').sort((a, b) => b.date.localeCompare(a.date))
+    return bw[0]?.value
+  }, [metrics])
+
+  const summary = useMemo(() => summarizeSession(sets, bodyweight), [sets, bodyweight])
+  if (summary.tonnageKg <= 0) return null
+
+  return (
+    <Card>
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[18px]" aria-hidden>
+          ✓
+        </span>
+        <h3 className="text-[14px] font-semibold text-ink">Entrenamiento completado</h3>
+      </div>
+      <FunFactList facts={summary.facts} />
+    </Card>
+  )
+}
+
+function FinishSession({ sessionId, sets }: { sessionId: string; sets: SetLog[] }) {
+  const { sessions, updateSession, metrics } = useApp()
   const session = sessions.find((s) => s.id === sessionId)
   const [effort, setEffort] = useState<number | ''>('')
+
+  const bodyweight = useMemo(() => {
+    const bw = metrics.filter((m) => m.metric === 'bodyweight').sort((a, b) => b.date.localeCompare(a.date))
+    return bw[0]?.value
+  }, [metrics])
+  const summary = useMemo(() => summarizeSession(sets, bodyweight), [sets, bodyweight])
+
   if (!session) return null
 
   return (
     <Card>
+      {/* Se muestra el logro antes de pedir nada: primero el refuerzo, luego el tramite */}
+      {summary.facts.length > 0 && (
+        <div className="mb-4">
+          <FunFactList facts={summary.facts.slice(0, 1)} />
+        </div>
+      )}
+
       <h3 className="text-[14px] font-semibold text-ink">Cerrar entrenamiento</h3>
       <p className="mt-0.5 text-[12px] text-ink-secondary">
         La fatiga percibida da contexto al volumen: 20 series de pecho con esfuerzo 5 sostenido
