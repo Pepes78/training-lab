@@ -4,6 +4,14 @@ import clsx from 'clsx'
 import { useApp } from '@/store/useApp'
 import { requestPersistence } from '@/lib/storage'
 import { StorageWarning } from '@/components/StorageWarning'
+import {
+  IconBars,
+  IconBody,
+  IconDumbbell,
+  IconHome,
+  IconPlan,
+  IconSettings,
+} from '@/components/icons'
 import Dashboard from '@/pages/Dashboard'
 import Train from '@/pages/Train'
 import Volume from '@/pages/Volume'
@@ -13,11 +21,11 @@ import Settings from '@/pages/Settings'
 import ExerciseHistory from '@/pages/ExerciseHistory'
 
 const NAV = [
-  { to: '/', label: 'Inicio', icon: '◆', end: true },
-  { to: '/entrenar', label: 'Entrenar', icon: '▲', end: false },
-  { to: '/volumen', label: 'Volumen', icon: '▮', end: false },
-  { to: '/cuerpo', label: 'Cuerpo', icon: '●', end: false },
-  { to: '/rutinas', label: 'Rutinas', icon: '≡', end: false },
+  { to: '/', label: 'Inicio', Icon: IconHome, end: true },
+  { to: '/entrenar', label: 'Entrenar', Icon: IconDumbbell, end: false },
+  { to: '/volumen', label: 'Volumen', Icon: IconBars, end: false },
+  { to: '/cuerpo', label: 'Cuerpo', Icon: IconBody, end: false },
+  { to: '/rutinas', label: 'Rutinas', Icon: IconPlan, end: false },
 ]
 
 export default function App() {
@@ -81,13 +89,13 @@ export default function App() {
             to="/ajustes"
             className={({ isActive }) =>
               clsx(
-                'flex h-9 w-9 items-center justify-center rounded-lg text-[15px] transition-colors',
+                'flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
                 isActive ? 'bg-accent-soft text-accent-strong' : 'text-ink-muted hover:bg-surface-sunken',
               )
             }
             aria-label="Ajustes"
           >
-            ⚙
+            {({ isActive }) => <IconSettings size={19} active={isActive} />}
           </NavLink>
         </div>
       </header>
@@ -116,15 +124,25 @@ export default function App() {
               end={n.end}
               className={({ isActive }) =>
                 clsx(
-                  'flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors',
+                  'flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors',
                   isActive ? 'text-accent' : 'text-ink-muted',
                 )
               }
             >
-              <span className="text-[15px] leading-none" aria-hidden>
-                {n.icon}
-              </span>
-              {n.label}
+              {({ isActive }) => (
+                <>
+                  {/* Pastilla de fondo: marca la pestana activa sin depender solo del color */}
+                  <span
+                    className={clsx(
+                      'flex h-7 w-12 items-center justify-center rounded-full transition-colors',
+                      isActive && 'bg-accent-soft',
+                    )}
+                  >
+                    <n.Icon size={21} active={isActive} />
+                  </span>
+                  {n.label}
+                </>
+              )}
             </NavLink>
           ))}
         </div>
