@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 /* ============================================================================
  *  Piezas de interfaz compartidas
@@ -157,11 +157,37 @@ export function Badge({
   )
 }
 
+/**
+ * Acepta coma o punto como separador decimal y devuelve null si aun no hay un
+ * numero utilizable ("", "-", "," son estados intermedios validos al teclear).
+ */
+function parseDecimal(raw: string): number | null {
+  const normalized = raw.replace(',', '.').trim()
+  if (normalized === '' || normalized === '-' || normalized === '.' || normalized === '-.') return null
+  const n = Number(normalized)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Digitos con un unico separador decimal y signo negativo opcional. */
+const PARTIAL_NUMBER = /^-?\d*[.,]?\d*$/
+
+/*
+ * Campo numerico.
+ *
+ * Es un input de TEXTO, no type="number", y la razon es concreta: un
+ * type="number" controlado no deja escribir decimales. Al teclear "85." el
+ * navegador considera ese valor intermedio invalido y devuelve cadena vacia,
+ * asi que React reescribe el campo vacio justo al pulsar el punto y es
+ * imposible llegar a "85.5". Ademas, el teclado decimal en espanol ofrece coma,
+ * que type="number" rechaza de plano.
+ *
+ * Aqui se conserva el texto tal cual se escribe y se notifica el numero solo
+ * cuando ya se puede interpretar.
+ */
 export function NumberField({
   label,
   value,
   onChange,
-  step = 1,
   min = 0,
   placeholder,
   suffix,
@@ -170,12 +196,40 @@ export function NumberField({
   label?: string
   value: number | ''
   onChange: (v: number | '') => void
+  /**
+   * Aceptado pero sin efecto: el campo es de texto y no tiene incrementos.
+   * Se mantiene para no tocar las llamadas existentes, que lo pasan como
+   * documentacion de la granularidad esperada.
+   */
   step?: number
   min?: number
   placeholder?: string
   suffix?: string
   className?: string
 }) {
+  const [text, setText] = useState(() => (value === '' ? '' : String(value)))
+
+  // Sincroniza cuando el valor cambia desde fuera (reset del formulario,
+  // rellenar con la sugerencia...). Se compara por valor interpretado para no
+  // pisar lo que se esta escribiendo: con "85," el numero ya es 85 y el texto
+  // debe quedarse como esta.
+  useEffect(() => {
+    const current = parseDecimal(text)
+    if (value === '') {
+      if (current !== null) setText('')
+    } else if (current !== value) {
+      setText(String(value))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  const handle = (raw: string) => {
+    if (!PARTIAL_NUMBER.test(raw)) return // se ignora la tecla invalida
+    setText(raw)
+    const n = parseDecimal(raw)
+    onChange(n === null ? '' : n)
+  }
+
   return (
     <label className={clsx('block', className)}>
       {label && (
@@ -185,14 +239,25 @@ export function NumberField({
       )}
       <span className="relative flex items-center">
         <input
-          type="number"
-          /* decimal abre el teclado numerico en movil sin bloquear los decimales */
+          type="text"
+          /* Teclado numerico con separador decimal en movil */
           inputMode="decimal"
-          step={step}
-          min={min}
+          autoComplete="off"
           placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+          value={text}
+          onChange={(e) => handle(e.target.value)}
+          onBlur={() => {
+            // Al salir se normaliza: "85," pasa a "85" y "" limpia el valor
+            const n = parseDecimal(text)
+            if (n === null) {
+              setText('')
+              onChange('')
+            } else {
+              const clamped = min !== undefined && n < min ? min : n
+              setText(String(clamped))
+              onChange(clamped)
+            }
+          }}
           className={clsx(
             'num h-11 w-full rounded-lg border border-hairline bg-white px-3 text-[15px] text-ink',
             'focus:border-accent focus:ring-2 focus:ring-accent-soft focus:outline-none',
