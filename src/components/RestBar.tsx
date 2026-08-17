@@ -2,18 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 
 /* ============================================================================
- *  Temporizador de descanso
+ *  Barra de descanso
  * ----------------------------------------------------------------------------
- *  Arranca solo al registrar una serie, con el descanso que marca la rutina.
+ *  El descanso vive en una franja fina arriba, ocupando el sitio de la cabecera
+ *  en lugar de flotar sobre el contenido: mientras corre no tapa la carga ni
+ *  los botones, que es justo lo que se esta mirando entre serie y serie.
  *
- *  Cuenta contra un instante final absoluto en lugar de restar segundos: los
+ *  La cuenta va contra un instante final absoluto y no restando segundos: los
  *  navegadores moviles frenan los temporizadores con la pantalla apagada, y
- *  restando de uno en uno el reloj se quedaria corto justo cuando lo miras.
+ *  restando de uno en uno el reloj se quedaria corto justo al mirarlo.
  * ========================================================================== */
 
 function beep() {
   try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const Ctx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ctx = new Ctx()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
@@ -29,13 +33,15 @@ function beep() {
   }
 }
 
-export function RestTimer({
+export function RestBar({
   seconds,
   onDone,
+  onExtend,
   sound = true,
 }: {
   seconds: number
   onDone: () => void
+  onExtend: (extra: number) => void
   sound?: boolean
 }) {
   const endAt = useRef(Date.now() + seconds * 1000)
@@ -71,45 +77,43 @@ export function RestTimer({
   return (
     <div
       className={clsx(
-        'fixed inset-x-3 bottom-20 z-40 rounded-xl border p-3 shadow-lg sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-72',
+        'relative overflow-hidden rounded-xl border px-3 py-2',
         done ? 'border-[#c9ecc9] bg-[#eefaee]' : 'border-hairline bg-white',
       )}
       role="status"
       aria-live="polite"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[10px] font-medium uppercase tracking-wider text-ink-muted">
-            {done ? 'Descanso completado' : 'Descanso'}
-          </div>
-          <div className="num text-[24px] leading-tight font-semibold text-ink">
-            {mm}:{String(ss).padStart(2, '0')}
-          </div>
-        </div>
-        <div className="flex gap-2">
+      {/* El relleno avanza por debajo del contenido: el progreso se ve de reojo
+          sin tener que leer la cifra */}
+      <div
+        className={clsx(
+          'absolute inset-y-0 left-0 transition-[width] duration-300',
+          done ? 'bg-[#0ca30c]/10' : 'bg-accent-soft',
+        )}
+        style={{ width: `${Math.min(100, pct)}%` }}
+        aria-hidden
+      />
+      <div className="relative flex items-center gap-3">
+        <span className="text-[11px] font-medium tracking-wide text-ink-muted uppercase">
+          {done ? 'Listo' : 'Descanso'}
+        </span>
+        <span className="num text-[17px] leading-none font-semibold text-ink">
+          {mm}:{String(ss).padStart(2, '0')}
+        </span>
+        <div className="ml-auto flex gap-1.5">
           <button
-            onClick={() => {
-              endAt.current += 30_000
-              setRemaining((r) => r + 30)
-              fired.current = false
-            }}
-            className="h-9 rounded-lg border border-hairline px-2.5 text-[12px] font-medium text-ink-secondary hover:bg-surface-sunken"
+            onClick={() => onExtend(30)}
+            className="h-8 rounded-lg border border-hairline bg-white px-2.5 text-[12px] font-medium text-ink-secondary"
           >
             +30s
           </button>
           <button
             onClick={onDone}
-            className="h-9 rounded-lg bg-accent px-3 text-[12px] font-medium text-white hover:bg-accent-strong"
+            className="h-8 rounded-lg bg-accent px-3 text-[12px] font-medium text-white"
           >
-            Listo
+            Saltar
           </button>
         </div>
-      </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-sunken">
-        <div
-          className={clsx('h-1 rounded-full transition-[width] duration-300', done ? 'bg-[#0ca30c]' : 'bg-accent')}
-          style={{ width: `${Math.min(100, pct)}%` }}
-        />
       </div>
     </div>
   )

@@ -117,7 +117,9 @@ export function WeightPicker({
                   selected ? 'text-accent-strong' : 'text-ink',
                 )}
               >
-                {fmt(o.kg)}
+                {/* 0 kg en un ejercicio de peso corporal no es "nada": es la
+                    carga base, y escrito como 0 parece un valor sin rellenar */}
+                {o.kg === 0 ? 'PC' : fmt(o.kg)}
               </span>
               <span
                 className={clsx(
