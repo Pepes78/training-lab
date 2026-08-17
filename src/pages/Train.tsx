@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { useApp, useCatalog, useCatalogList, useCurrentWeek, lastSetsForSlot } from '@/store/useApp'
@@ -9,7 +9,9 @@ import { suggestNext } from '@/lib/progression'
 import { rankSubstitutions } from '@/lib/substitutions'
 import { estimate1RM } from '@/lib/e1rm'
 import { summarizeSession } from '@/lib/milestones'
+import { fmt, incrementFor } from '@/lib/increments'
 import { FunFactList } from '@/components/FunFacts'
+import { WeightPicker } from '@/components/WeightPicker'
 import { Badge, Button, Card, EmptyState, NumberField, Sheet } from '@/components/ui'
 import { ExerciseDemo } from '@/components/ExerciseDemo'
 import { RestTimer } from '@/components/RestTimer'
@@ -155,6 +157,7 @@ export default function Train() {
               sets={sessionSets.filter((s) => s.slotId === slot.slotId)}
               lastSets={lastSetsForSlot(sessions, setLogs, cycle.id, slot.slotId, week)}
               minPlate={settings.minPlateIncrement}
+              increments={settings.exerciseIncrements}
               onDemo={() => setDemo({ exercise, note: slot.notes })}
               onSwap={() => setSwapping({ slot, exercise })}
               onRest={(seconds) => setRest({ seconds, key: Date.now() })}
@@ -211,6 +214,7 @@ function ExerciseCard({
   sets,
   lastSets,
   minPlate,
+  increments,
   onDemo,
   onSwap,
   onRest,
@@ -224,32 +228,56 @@ function ExerciseCard({
   sets: SetLog[]
   lastSets: SetLog[]
   minPlate: number
+  increments: Record<string, number>
   onDemo: () => void
   onSwap: () => void
   onRest: (seconds: number) => void
 }) {
-  const { cycle, getOrCreateSession, logSet, removeSet } = useApp()
+  const { cycle, getOrCreateSession, logSet, removeSet, updateSettings } = useApp()
   const routine = cycle!.routineSnapshot
 
+  // El salto del aparato manda sobre el incremento global: sugerir 81,25 kg en
+  // una polea de placas de 5 seria proponer una carga que no se puede montar.
+  const exerciseIncrement = incrementFor(exercise, increments, minPlate)
+
   const suggestion = useMemo(
-    () => suggestNext(routine, slot, exercise, week, lastSets, minPlate),
-    [routine, slot, exercise, week, lastSets, minPlate],
+    () => suggestNext(routine, slot, exercise, week, lastSets, exerciseIncrement),
+    [routine, slot, exercise, week, lastSets, exerciseIncrement],
   )
 
   const targetSets = prescribedSets(routine, slot, week)
   const done = sets.filter((s) => !s.isWarmup).sort((a, b) => a.setIndex - b.setIndex)
   const isSeconds = (slot.metric ?? exercise.defaultMetric) === 'seconds'
 
+  const lastWeight = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.weightKg)) : undefined
+
+  /*
+   * Referencia del control de carga, por orden de cercania:
+   *   1. lo que ya has movido HOY en este ejercicio: la serie 2 va con el peso
+   *      de la serie 1, no con el que sugeria el motor antes de empezar
+   *   2. lo que sugiere el motor a partir del historial
+   * Sin ninguna de las dos es la primera vez, y se pide la carga a mano.
+   */
+  const pickerBase = done.length > 0 ? done[done.length - 1].weightKg : suggestion.weightKg
+
   const [weight, setWeight] = useState<number | ''>('')
   const [reps, setReps] = useState<number | ''>('')
   const [rir, setRir] = useState<number | ''>('')
   const [open, setOpen] = useState(false)
+
+  // La carga sugerida viene ya elegida: lo normal es aceptarla, y quien quiera
+  // otra cosa la cambia de un toque. Solo se aplica si aun no has tocado nada.
+  useEffect(() => {
+    if (weight === '' && pickerBase !== null) setWeight(pickerBase)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickerBase])
 
   const prefill = () => {
     if (weight === '' && suggestion.weightKg !== null) setWeight(suggestion.weightKg)
     if (reps === '') setReps(slot.repRange[1])
     if (rir === '' && typeof suggestion.targetRIR === 'number') setRir(suggestion.targetRIR)
   }
+
 
   const add = async () => {
     if (reps === '' || reps <= 0) return
@@ -350,7 +378,7 @@ function ExerciseCard({
                     {s.setIndex}
                   </span>
                   <span className="num font-medium text-ink">
-                    {s.weightKg > 0 ? `${s.weightKg} kg` : 'Peso corporal'}
+                    {s.weightKg > 0 ? `${fmt(s.weightKg)} kg` : 'Peso corporal'}
                   </span>
                   <span className="num text-ink-secondary">
                     × {s.seconds ?? s.reps}
@@ -361,7 +389,7 @@ function ExerciseCard({
                   )}
                   {e && (
                     <span className="num ml-auto text-[11px] text-ink-muted" title="1RM estimado">
-                      e1RM {e.value.toFixed(1)}
+                      e1RM {fmt(Math.round(e.value * 10) / 10)}
                     </span>
                   )}
                   <button
@@ -378,32 +406,55 @@ function ExerciseCard({
         )}
 
         {/* Registro de una serie nueva */}
-        <div className="mt-3 flex items-end gap-2">
-          <NumberField
-            label={isSeconds ? 'Lastre' : 'Peso'}
-            value={weight}
-            onChange={setWeight}
-            step={minPlate}
-            suffix="kg"
-            className="flex-1"
-          />
-          <NumberField
-            label={isSeconds ? 'Segundos' : 'Reps'}
-            value={reps}
-            onChange={setReps}
-            step={1}
-            className="w-20"
-          />
-          <NumberField label="RIR" value={rir} onChange={setRir} step={1} className="w-16" />
-          <Button variant="primary" size="lg" onClick={() => void add()} disabled={reps === ''}>
-            +
-          </Button>
-        </div>
+        {isSeconds ? (
+          <div className="mt-3 flex items-end gap-2">
+            <NumberField
+              label="Lastre"
+              value={weight}
+              onChange={setWeight}
+              suffix="kg"
+              className="flex-1"
+            />
+            <NumberField label="Segundos" value={reps} onChange={setReps} className="w-24" />
+            <NumberField label="RIR" value={rir} onChange={setRir} className="w-16" />
+            <Button variant="primary" size="lg" onClick={() => void add()} disabled={reps === ''}>
+              +
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-3 space-y-2.5">
+            <WeightPicker
+              exercise={exercise}
+              suggested={pickerBase}
+              value={weight}
+              onChange={setWeight}
+              lastWeight={lastWeight}
+              increments={increments}
+              fallbackIncrement={minPlate}
+              onSaveIncrement={(exerciseId, kg) =>
+                void updateSettings({ exerciseIncrements: { ...increments, [exerciseId]: kg } })
+              }
+            />
+            <div className="flex items-end gap-2">
+              <NumberField label="Reps" value={reps} onChange={setReps} className="flex-1" />
+              <NumberField label="RIR" value={rir} onChange={setRir} className="w-20" />
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1"
+                onClick={() => void add()}
+                disabled={reps === '' || weight === ''}
+              >
+                Registrar
+              </Button>
+            </div>
+          </div>
+        )}
         <button
           onClick={prefill}
           className="mt-2 text-[11px] font-medium text-accent hover:underline"
         >
-          Rellenar con la sugerencia
+          Rellenar reps y RIR sugeridos
         </button>
       </div>
 

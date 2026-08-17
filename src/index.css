@@ -77,8 +77,12 @@ input[type='number'] {
   border-radius: var(--radius-card);
 }
 
+/* Cifras en monoespaciada tabular: las cargas se leen en columna y de reojo,
+   asi que no deben bailar de ancho al cambiar de digito. */
 @utility num {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* Scroll horizontal contenido: el cuerpo de la pagina nunca se desplaza en X */
