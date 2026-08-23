@@ -292,6 +292,23 @@ function DeleteCycleSheet({ cycle, onClose }: { cycle: Cycle | null; onClose: ()
 
 /* ── Importar ──────────────────────────────────────────────────────────── */
 
+/**
+ * Normaliza texto pegado desde fuentes que "embellecen" las comillas rectas
+ * (notas, teclados moviles, editores con autocorreccion) o que envuelven el
+ * JSON en un bloque de codigo markdown, para que JSON.parse no falle por
+ * comillas tipograficas o fences que no forman parte del JSON en si.
+ */
+function sanitizeJsonInput(raw: string): string {
+  let text = raw.trim()
+  text = text.replace(/^﻿/, '')
+  const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  if (fenced) text = fenced[1].trim()
+  text = text
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+  return text
+}
+
 function ImportSheet({
   open,
   onClose,
@@ -312,7 +329,7 @@ function ImportSheet({
     setOk('')
     let parsed: unknown
     try {
-      parsed = JSON.parse(raw)
+      parsed = JSON.parse(sanitizeJsonInput(raw))
     } catch (e) {
       setErrors([`El texto no es JSON valido: ${e instanceof Error ? e.message : 'error'}`])
       return
