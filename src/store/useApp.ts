@@ -26,6 +26,15 @@ import { mondayOfCurrentWeek, toISODate, weekOf } from '@/lib/date'
  *  instantaneas y funcionan sin red.
  * ========================================================================== */
 
+/** Punto donde el usuario dejo la pantalla de entrenar, para no perderlo al
+ * cambiar de pestana y volver (el componente se desmonta con la ruta). */
+interface TrainPos {
+  cycleId: string
+  week: number
+  dayIdx: number
+  exIdx: number
+}
+
 interface AppState {
   ready: boolean
   settings: Settings
@@ -37,6 +46,17 @@ interface AppState {
   overrides: WeekOverride[]
   metrics: BodyMetric[]
   syncResult: SyncResult | null
+
+  trainPos: TrainPos | null
+  setTrainPos: (pos: TrainPos) => void
+
+  // El descanso se guarda como instante final absoluto (no segundos restantes)
+  // para que siga corriendo aunque la pantalla de entrenar se desmonte.
+  restEndAt: number | null
+  restTotalSeconds: number
+  startRest: (seconds: number) => void
+  extendRest: (extraSeconds: number) => void
+  clearRest: () => void
 
   init: () => Promise<void>
   refresh: () => Promise<void>
@@ -74,6 +94,25 @@ export const useApp = create<AppState>((set, get) => ({
   overrides: [],
   metrics: [],
   syncResult: null,
+
+  trainPos: null,
+  setTrainPos(pos) {
+    set({ trainPos: pos })
+  },
+
+  restEndAt: null,
+  restTotalSeconds: 0,
+  startRest(seconds) {
+    set({ restEndAt: Date.now() + seconds * 1000, restTotalSeconds: seconds })
+  },
+  extendRest(extraSeconds) {
+    const { restEndAt, restTotalSeconds } = get()
+    if (restEndAt === null) return
+    set({ restEndAt: restEndAt + extraSeconds * 1000, restTotalSeconds: restTotalSeconds + extraSeconds })
+  },
+  clearRest() {
+    set({ restEndAt: null })
+  },
 
   async init() {
     const settings = await db.loadSettings()

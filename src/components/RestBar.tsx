@@ -34,29 +34,29 @@ function beep() {
 }
 
 export function RestBar({
-  seconds,
+  endAt,
+  totalSeconds,
   onDone,
   onExtend,
   sound = true,
 }: {
-  seconds: number
+  /** Instante absoluto (Date.now() + ms) en que termina el descanso. */
+  endAt: number
+  totalSeconds: number
   onDone: () => void
   onExtend: (extra: number) => void
   sound?: boolean
 }) {
-  const endAt = useRef(Date.now() + seconds * 1000)
-  const [remaining, setRemaining] = useState(seconds)
+  const [remaining, setRemaining] = useState(() => Math.max(0, Math.round((endAt - Date.now()) / 1000)))
   const fired = useRef(false)
 
   useEffect(() => {
-    endAt.current = Date.now() + seconds * 1000
     fired.current = false
-    setRemaining(seconds)
-  }, [seconds])
+  }, [endAt])
 
   useEffect(() => {
     const tick = () => {
-      const left = Math.max(0, Math.round((endAt.current - Date.now()) / 1000))
+      const left = Math.max(0, Math.round((endAt - Date.now()) / 1000))
       setRemaining(left)
       if (left === 0 && !fired.current) {
         fired.current = true
@@ -67,12 +67,12 @@ export function RestBar({
     const id = setInterval(tick, 250)
     tick()
     return () => clearInterval(id)
-  }, [sound])
+  }, [sound, endAt])
 
   const done = remaining === 0
   const mm = Math.floor(remaining / 60)
   const ss = remaining % 60
-  const pct = seconds > 0 ? ((seconds - remaining) / seconds) * 100 : 100
+  const pct = totalSeconds > 0 ? ((totalSeconds - remaining) / totalSeconds) * 100 : 100
 
   return (
     <div
