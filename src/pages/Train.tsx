@@ -528,9 +528,11 @@ function ExerciseFocus({
           onClick={() => void add()}
           disabled={reps === '' || (needsWeight && weight === '')}
         >
-          {reps === ''
+          {/* Solo se nombra la carga cuando de verdad hay una: en un ejercicio
+              con peso, un "PC" mientras el campo esta vacio es enganoso */}
+          {reps === '' || (needsWeight && weight === '')
             ? `Registrar serie ${nextSetIndex}`
-            : `Registrar serie ${nextSetIndex} · ${weight === '' ? 'PC' : fmt(weight)} × ${reps}${isSeconds ? 's' : ''}`}
+            : `Registrar serie ${nextSetIndex} · ${weight === '' || weight === 0 ? 'PC' : fmt(weight)} × ${reps}${isSeconds ? 's' : ''}`}
         </Button>
 
         {complete && hasNext && (
