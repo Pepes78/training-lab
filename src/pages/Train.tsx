@@ -32,18 +32,39 @@ import { Badge, Button, Card, EmptyState, Sheet } from '@/components/ui'
  * ========================================================================== */
 
 export default function Train() {
-  const { cycle, sessions, setLogs, overrides, settings } = useApp()
+  const {
+    cycle,
+    sessions,
+    setLogs,
+    overrides,
+    settings,
+    trainPos,
+    setTrainPos,
+    restEndAt,
+    restTotalSeconds,
+    startRest,
+    extendRest,
+    clearRest,
+  } = useApp()
   const currentWeek = useCurrentWeek()
   const catalog = useCatalog()
   const catalogList = useCatalogList()
 
-  const [week, setWeek] = useState(currentWeek)
-  const [dayIdx, setDayIdx] = useState(0)
-  const [exIdx, setExIdx] = useState(0)
+  // La posicion (semana/dia/ejercicio) vive en el store, no en useState: asi
+  // sobrevive a que el usuario cambie de pestana y vuelva a Entrenar, en vez
+  // de recalcularse siempre a la semana "de hoy" y al primer ejercicio.
+  const pos = trainPos && cycle && trainPos.cycleId === cycle.id ? trainPos : null
+  const week = pos ? pos.week : currentWeek
+  const dayIdx = pos ? pos.dayIdx : 0
+  const exIdx = pos ? pos.exIdx : 0
+  const updatePos = (patch: Partial<{ week: number; dayIdx: number; exIdx: number }>) => {
+    if (!cycle) return
+    setTrainPos({ cycleId: cycle.id, week, dayIdx, exIdx, ...patch })
+  }
+
   const [picker, setPicker] = useState(false)
   const [demo, setDemo] = useState<{ exercise: Exercise; note?: string } | null>(null)
   const [swapping, setSwapping] = useState<{ slot: Slot; exercise: Exercise } | null>(null)
-  const [rest, setRest] = useState<{ seconds: number; key: number } | null>(null)
 
   if (!cycle) {
     return (
@@ -84,13 +105,13 @@ export default function Train() {
   return (
     <div className="space-y-4">
       {/* ── Franja superior: contexto, o cuenta atras mientras descansas ── */}
-      {rest ? (
+      {restEndAt !== null ? (
         <RestBar
-          key={rest.key}
-          seconds={rest.seconds}
+          endAt={restEndAt}
+          totalSeconds={restTotalSeconds}
           sound={settings.restTimerSound}
-          onDone={() => setRest(null)}
-          onExtend={(extra) => setRest((r) => (r ? { ...r, seconds: r.seconds + extra } : r))}
+          onDone={clearRest}
+          onExtend={extendRest}
         />
       ) : (
         <div className="flex items-center gap-2">
@@ -143,8 +164,8 @@ export default function Train() {
           ladders={settings.exerciseLadders}
           onDemo={() => setDemo({ exercise, note: slot.notes })}
           onSwap={() => setSwapping({ slot, exercise })}
-          onRest={(seconds) => setRest({ seconds, key: Date.now() })}
-          onNext={() => setExIdx((i) => Math.min(slots.length - 1, i + 1))}
+          onRest={(seconds) => startRest(seconds)}
+          onNext={() => updatePos({ exIdx: Math.min(slots.length - 1, exIdx + 1) })}
           hasNext={exIdx < slots.length - 1}
         />
       ) : (
@@ -172,7 +193,7 @@ export default function Train() {
             return (
               <button
                 key={s.slotId}
-                onClick={() => setExIdx(i)}
+                onClick={() => updatePos({ exIdx: i })}
                 className={clsx(
                   'flex w-full items-center gap-3 border-b border-hairline px-4 py-2.5 text-left last:border-0 transition-colors',
                   isCurrent ? 'bg-accent-soft' : 'hover:bg-surface-sunken',
@@ -234,9 +255,7 @@ export default function Train() {
           isDeloadWeek(routine, w),
         )}
         onPick={(w, d) => {
-          setWeek(w)
-          setDayIdx(d)
-          setExIdx(0)
+          updatePos({ week: w, dayIdx: d, exIdx: 0 })
           setPicker(false)
         }}
       />
