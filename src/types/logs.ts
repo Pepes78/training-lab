@@ -162,9 +162,16 @@ export const settingsSchema = z.object({
   /** Incremento minimo de disco disponible en tu gimnasio, en kg. */
   minPlateIncrement: z.number().positive().default(1.25),
   /**
-   * Salto de carga fijado a mano para un ejercicio concreto, por id.
-   * Se guarda en el ejercicio y no en la serie: se configura una vez y las
-   * semanas siguientes ya ofrecen las cargas correctas.
+   * Escalera de cargas fijada a mano para un ejercicio concreto, por id.
+   * `base` es la carga mas baja del aparato y `step` lo que sube de una
+   * posicion a la siguiente. Se guarda en el ejercicio y no en la serie.
+   */
+  exerciseLadders: z
+    .record(z.string(), z.object({ base: z.number().min(0), step: z.number().positive() }))
+    .default({}),
+  /**
+   * Formato anterior, solo un salto y contando desde cero. Se conserva para
+   * poder migrarlo una vez y se vacia despues; no se escribe nunca.
    */
   exerciseIncrements: z.record(z.string(), z.number().positive()).default({}),
   restTimerSound: z.boolean().default(true),

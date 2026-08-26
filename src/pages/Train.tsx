@@ -9,7 +9,7 @@ import { suggestNext } from '@/lib/progression'
 import { rankSubstitutions } from '@/lib/substitutions'
 import { estimate1RM } from '@/lib/e1rm'
 import { summarizeSession } from '@/lib/milestones'
-import { fmt, incrementFor } from '@/lib/increments'
+import { fmt, ladderFor, snapToLadder, type LoadLadder } from '@/lib/increments'
 import { FunFactList } from '@/components/FunFacts'
 import { WeightPicker } from '@/components/WeightPicker'
 import { RestBar } from '@/components/RestBar'
@@ -140,7 +140,7 @@ export default function Train() {
           targetSets={targetSets}
           lastSets={lastSetsForSlot(sessions, setLogs, cycle.id, slot.slotId, week)}
           minPlate={settings.minPlateIncrement}
-          increments={settings.exerciseIncrements}
+          ladders={settings.exerciseLadders}
           onDemo={() => setDemo({ exercise, note: slot.notes })}
           onSwap={() => setSwapping({ slot, exercise })}
           onRest={(seconds) => setRest({ seconds, key: Date.now() })}
@@ -273,7 +273,7 @@ function ExerciseFocus({
   targetSets,
   lastSets,
   minPlate,
-  increments,
+  ladders,
   onDemo,
   onSwap,
   onRest,
@@ -291,7 +291,7 @@ function ExerciseFocus({
   targetSets: number
   lastSets: SetLog[]
   minPlate: number
-  increments: Record<string, number>
+  ladders: Record<string, LoadLadder>
   onDemo: () => void
   onSwap: () => void
   onRest: (seconds: number) => void
@@ -301,11 +301,16 @@ function ExerciseFocus({
   const { cycle, getOrCreateSession, logSet, removeSet, updateSettings } = useApp()
   const routine = cycle!.routineSnapshot
 
-  const exerciseIncrement = incrementFor(exercise, increments, minPlate)
-  const suggestion = useMemo(
-    () => suggestNext(routine, slot, exercise, week, lastSets, exerciseIncrement),
-    [routine, slot, exercise, week, lastSets, exerciseIncrement],
-  )
+  // La escalera del aparato manda sobre el incremento global: sugerir 81,25 kg
+  // en una polea cuyo primer disco son 5 y sube de 8 en 8 seria proponer una
+  // carga que no existe.
+  const ladder = ladderFor(exercise, ladders, minPlate)
+  const suggestion = useMemo(() => {
+    const raw = suggestNext(routine, slot, exercise, week, lastSets, ladder.step)
+    return raw.weightKg === null
+      ? raw
+      : { ...raw, weightKg: snapToLadder(raw.weightKg, ladder) }
+  }, [routine, slot, exercise, week, lastSets, ladder])
 
   const isSeconds = (slot.metric ?? exercise.defaultMetric) === 'seconds'
   const lastWeight = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.weightKg)) : undefined
@@ -473,11 +478,16 @@ function ExerciseFocus({
           value={weight}
           onChange={setWeight}
           lastWeight={lastWeight}
-          increments={increments}
-          fallbackIncrement={minPlate}
-          onSaveIncrement={(exerciseId, kg) =>
-            void updateSettings({ exerciseIncrements: { ...increments, [exerciseId]: kg } })
+          ladders={ladders}
+          fallbackStep={minPlate}
+          onSaveLadder={(exerciseId, next) =>
+            void updateSettings({ exerciseLadders: { ...ladders, [exerciseId]: next } })
           }
+          onResetLadder={(exerciseId) => {
+            const rest = { ...ladders }
+            delete rest[exerciseId]
+            void updateSettings({ exerciseLadders: rest })
+          }}
         />
 
         <p className="mt-2 text-[12px] leading-snug text-ink-secondary">{suggestion.rationale}</p>
