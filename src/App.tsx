@@ -114,8 +114,12 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Navegacion movil: barra inferior, alcanzable con el pulgar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-hairline bg-white/95 backdrop-blur sm:hidden">
+      {/* Navegacion movil: barra inferior, alcanzable con el pulgar.
+          `sticky` y no `fixed`: en iOS los elementos fixed se desenganchan del
+          viewport y quedan flotando a mitad de pagina al hacer scroll tras
+          tocar un input (bug conocido de WKWebView/Safari). Sticky se recalcula
+          como parte del flujo normal y no tiene ese problema. */}
+      <nav className="sticky bottom-0 z-30 border-t border-hairline bg-white/95 backdrop-blur sm:hidden">
         <div className="flex" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           {NAV.map((n) => (
             <NavLink
