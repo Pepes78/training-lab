@@ -12,7 +12,8 @@ import type {
   WeekOverride,
 } from '@/types/logs'
 import { DEFAULT_SETTINGS } from '@/types/logs'
-import { CATALOG } from '@/data/catalog'
+import { CATALOG, CATALOG_BY_ID } from '@/data/catalog'
+import { defaultLadder } from '@/lib/increments'
 import seedRoutine from '@/data/routines/ul-ppl-5d.json'
 import * as db from '@/lib/db'
 import { sync, type SyncResult } from '@/lib/sync'
@@ -115,7 +116,29 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async init() {
-    const settings = await db.loadSettings()
+    let settings = await db.loadSettings()
+
+    /*
+     * Migracion del formato anterior de saltos de carga.
+     *
+     * Antes solo se guardaba el salto y las cargas se contaban desde cero, que
+     * es justo lo que descuadraba los numeros en una pila cuyo primer disco no
+     * pesa cero. Al convertir se conserva el salto elegido y se le pone la
+     * carga base del material, que es la correccion que faltaba. Solo toca
+     * ajustes: ninguna serie registrada se modifica.
+     */
+    const legacy = settings.exerciseIncrements ?? {}
+    if (Object.keys(legacy).length > 0) {
+      const ladders = { ...settings.exerciseLadders }
+      for (const [exerciseId, step] of Object.entries(legacy)) {
+        if (ladders[exerciseId]) continue
+        const ex = CATALOG_BY_ID[exerciseId]
+        ladders[exerciseId] = { base: ex ? defaultLadder(ex).base : 0, step }
+      }
+      settings = { ...settings, exerciseLadders: ladders, exerciseIncrements: {} }
+      await db.saveSettings(settings)
+    }
+
     let routines = await db.listRoutines()
 
     // Primera ejecucion: sembramos la rutina de ejemplo para que la app no

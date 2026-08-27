@@ -1,46 +1,61 @@
 import type { Equipment, Exercise } from '@/types/catalog'
 
 /* ============================================================================
- *  Salto de carga por ejercicio
+ *  Escalera de cargas de un ejercicio
  * ----------------------------------------------------------------------------
- *  Ningun gimnasio sube de 2,5 en 2,5 en todo. Una barra sube por pares de
- *  discos, unas mancuernas van de 2 en 2, y una polea o una maquina de pines
- *  solo admite las placas que tiene. Ofrecer cargas que el aparato no puede dar
- *  es pedirle al usuario que haga la conversion mentalmente cada serie.
+ *  Un aparato no admite cualquier peso: admite una lista concreta. Y esa lista
+ *  casi nunca empieza en cero.
  *
- *  El salto se guarda EN EL EJERCICIO, no en la serie: se configura una vez y
- *  las semanas siguientes ya ofrecen las cargas correctas.
+ *  Una barra vacia ya pesa 20 kg y sube de 2,5 en 2,5. Una polea cuyo primer
+ *  disco son 5 kg y va de 8 en 8 da 5, 13, 21, 29... nunca 8 ni 16. Modelar
+ *  solo el salto e ir contando desde cero descuadra los numeros justo cuando
+ *  miras la pila para comprobarlos.
  *
- *  Prioridad: lo que haya elegido el usuario para ese ejercicio > el valor por
- *  defecto de su material > el incremento global de Ajustes.
+ *  Por eso la escalera son DOS datos:
+ *      base  la carga mas baja que admite el aparato
+ *      step  lo que sube de una posicion a la siguiente
+ *
+ *  Se guarda EN EL EJERCICIO: se configura una vez y las semanas siguientes ya
+ *  ofrecen cargas que se pueden montar.
  * ========================================================================== */
 
-/** Salto tipico por material, en kilos. */
-const BY_EQUIPMENT: Record<Equipment, number> = {
-  barbell: 2.5, // par de discos de 1,25
-  'ez-bar': 2.5,
-  smith: 2.5,
-  dumbbell: 2, // las mancuernas de gimnasio suelen ir de 2 en 2
-  kettlebell: 4,
-  machine: 5, // placas de la pila
-  cable: 5,
-  band: 0, // no hay carga discreta que ofrecer
-  bodyweight: 1.25, // lastre
-  other: 2.5,
+export interface LoadLadder {
+  /** Carga mas baja: barra vacia, primer disco de la pila, mancuerna mas ligera. */
+  base: number
+  /** Salto entre dos posiciones consecutivas. */
+  step: number
 }
 
-/** Como se nombra el origen del salto, para el pie del control. */
-const SOURCE_LABEL: Record<Equipment, (kg: number) => string> = {
-  barbell: (kg) => `Barra · saltos de ${fmt(kg)} kg`,
-  'ez-bar': (kg) => `Barra EZ · saltos de ${fmt(kg)} kg`,
-  smith: (kg) => `Multipower · saltos de ${fmt(kg)} kg`,
-  dumbbell: (kg) => `Mancuernas · pares de ${fmt(kg)} en ${fmt(kg)} kg`,
-  kettlebell: (kg) => `Kettlebell · saltos de ${fmt(kg)} kg`,
-  machine: (kg) => `Maquina · placas de ${fmt(kg)} kg`,
-  cable: (kg) => `Polea · placas de ${fmt(kg)} kg`,
-  band: () => 'Banda · sin carga discreta',
-  bodyweight: (kg) => `Peso corporal · lastre de ${fmt(kg)} kg`,
-  other: (kg) => `Saltos de ${fmt(kg)} kg`,
+/** Escalera tipica por material. Punto de partida, editable por ejercicio. */
+const BY_EQUIPMENT: Record<Equipment, LoadLadder> = {
+  barbell: { base: 20, step: 2.5 }, // barra olimpica + pares de 1,25
+  'ez-bar': { base: 10, step: 2.5 },
+  smith: { base: 20, step: 2.5 },
+  dumbbell: { base: 2, step: 2 },
+  kettlebell: { base: 4, step: 4 },
+  machine: { base: 5, step: 5 }, // pila de discos
+  cable: { base: 5, step: 5 },
+  band: { base: 0, step: 0 }, // sin cargas discretas
+  bodyweight: { base: 0, step: 1.25 }, // 0 = el propio cuerpo, luego lastre
+  other: { base: 0, step: 2.5 },
+}
+
+/** Aparatos cuya pila se lee por numero de disco, no por kilos. */
+export function usesPlateNumbers(exercise: Exercise): boolean {
+  return exercise.equipment === 'machine' || exercise.equipment === 'cable'
+}
+
+const EQUIPMENT_NOUN: Record<Equipment, string> = {
+  barbell: 'Barra',
+  'ez-bar': 'Barra EZ',
+  smith: 'Multipower',
+  dumbbell: 'Mancuernas',
+  kettlebell: 'Kettlebell',
+  machine: 'Maquina',
+  cable: 'Polea',
+  band: 'Banda',
+  bodyweight: 'Peso corporal',
+  other: 'Aparato',
 }
 
 /** Formato espanol: coma decimal y sin ceros de relleno. */
@@ -48,85 +63,115 @@ export function fmt(kg: number): string {
   return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(kg)
 }
 
-export function defaultIncrement(exercise: Exercise): number {
+export function defaultLadder(exercise: Exercise): LoadLadder {
   return BY_EQUIPMENT[exercise.equipment]
 }
 
-/**
- * Salto efectivo de un ejercicio.
- * `overrides` son los saltos que el usuario ha fijado, por id de ejercicio.
- */
-export function incrementFor(
-  exercise: Exercise,
-  overrides: Record<string, number>,
-  fallback: number,
-): number {
-  const custom = overrides[exercise.id]
-  if (custom !== undefined && custom > 0) return custom
-  const byEquipment = defaultIncrement(exercise)
-  return byEquipment > 0 ? byEquipment : fallback
+/** true si el usuario ha configurado a mano la escalera de este ejercicio. */
+export function isCustomLadder(exercise: Exercise, ladders: Record<string, LoadLadder>): boolean {
+  return ladders[exercise.id] !== undefined
 }
 
-/** Pie del control: de donde sale el salto y si esta guardado a mano. */
-export function incrementSource(
+/**
+ * Escalera efectiva. Lo configurado a mano manda sobre el valor del material;
+ * `fallbackStep` solo entra cuando el material no define salto (bandas).
+ */
+export function ladderFor(
   exercise: Exercise,
-  overrides: Record<string, number>,
-  fallback: number,
+  ladders: Record<string, LoadLadder>,
+  fallbackStep: number,
+): LoadLadder {
+  const custom = ladders[exercise.id]
+  if (custom && custom.step > 0) return custom
+  const byEquipment = defaultLadder(exercise)
+  return byEquipment.step > 0 ? byEquipment : { base: byEquipment.base, step: fallbackStep }
+}
+
+/** Carga real mas cercana dentro de la escalera. */
+export function snapToLadder(kg: number, ladder: LoadLadder): number {
+  if (ladder.step <= 0) return Math.max(0, Math.round(kg * 100) / 100)
+  const positions = Math.round((kg - ladder.base) / ladder.step)
+  const value = ladder.base + Math.max(0, positions) * ladder.step
+  return Math.round(value * 100) / 100
+}
+
+/**
+ * Posicion dentro de la pila, 1 = primer disco. null si la carga no cae en la
+ * escalera, para no rotular como "disco 7,4" algo que se ha tecleado a mano.
+ */
+export function platePosition(kg: number, ladder: LoadLadder): number | null {
+  if (ladder.step <= 0) return null
+  const raw = (kg - ladder.base) / ladder.step
+  const rounded = Math.round(raw)
+  if (rounded < 0) return null
+  if (Math.abs(raw - rounded) > 0.01) return null
+  return rounded + 1
+}
+
+/** Primeras cargas de la escalera, para comprobarlas contra el aparato real. */
+export function ladderPreview(ladder: LoadLadder, count = 6): number[] {
+  if (ladder.step <= 0) return []
+  return Array.from(
+    { length: count },
+    (_, i) => Math.round((ladder.base + i * ladder.step) * 100) / 100,
+  )
+}
+
+/** Pie del control: de donde salen las cargas. */
+export function ladderSource(
+  exercise: Exercise,
+  ladder: LoadLadder,
+  custom: boolean,
 ): string {
-  const kg = incrementFor(exercise, overrides, fallback)
-  const base = SOURCE_LABEL[exercise.equipment](kg)
-  return overrides[exercise.id] !== undefined ? `${base} · guardado en el ejercicio` : base
-}
-
-/**
- * Saltos ofrecidos en la hoja de ajuste. Se parte de los habituales y se
- * incluye siempre el del material y el ya guardado, para que la opcion activa
- * este presente aunque sea inusual.
- */
-export function incrementOptions(
-  exercise: Exercise,
-  overrides: Record<string, number>,
-): number[] {
-  const common = [1.25, 2.5, 5, 10]
-  const set = new Set<number>(common)
-  const byEquipment = defaultIncrement(exercise)
-  if (byEquipment > 0) set.add(byEquipment)
-  const custom = overrides[exercise.id]
-  if (custom !== undefined && custom > 0) set.add(custom)
-  return [...set].sort((a, b) => a - b)
-}
-
-/** Redondea al multiplo del salto mas cercano; nunca por debajo de cero. */
-export function snapToIncrement(kg: number, increment: number): number {
-  if (increment <= 0) return Math.max(0, Math.round(kg * 100) / 100)
-  return Math.max(0, Math.round(kg / increment) * increment)
+  const noun = EQUIPMENT_NOUN[exercise.equipment]
+  if (ladder.step <= 0) return `${noun} · sin cargas fijas`
+  const body =
+    ladder.base > 0
+      ? `desde ${fmt(ladder.base)} kg, de ${fmt(ladder.step)} en ${fmt(ladder.step)}`
+      : `de ${fmt(ladder.step)} en ${fmt(ladder.step)}`
+  return custom ? `${noun} · ${body} · guardado en el ejercicio` : `${noun} · ${body}`
 }
 
 export interface LoadOption {
   kg: number
-  /** Diferencia respecto al sugerido, ya formateada ("+2,5 kg"). Vacia en el central. */
+  /** Diferencia respecto a la sugerida, ya formateada. Vacia en la central. */
   delta: string
   kind: 'lower' | 'suggested' | 'higher'
+  /** Numero de disco, si el aparato se lee asi. */
+  plate: number | null
 }
 
 /**
- * Las tres cargas del control: una por debajo, la sugerida y una por encima.
+ * Las tres cargas del control: una por debajo, la sugerida y una por encima,
+ * todas dentro de la escalera.
  *
- * Cada lateral muestra la diferencia REAL respecto a la sugerida, que depende
- * del aparato: en polea sera -5 y en mancuernas -2. No se etiquetan como
- * "suave" o "exigente" porque el numero ya lo dice sin interpretar nada.
+ * Cada lateral muestra la diferencia REAL respecto a la sugerida. No se
+ * etiquetan como "suave" o "exigente" porque el numero ya lo dice, y no se
+ * ofrece nada por debajo de la carga minima del aparato.
  */
-export function loadOptions(suggested: number, increment: number): LoadOption[] {
-  const step = increment > 0 ? increment : 1
-  const lower = Math.max(0, snapToIncrement(suggested - step, step))
-  const mid = snapToIncrement(suggested, step)
-  const higher = snapToIncrement(suggested + step, step)
+export function loadOptions(suggested: number, ladder: LoadLadder): LoadOption[] {
+  const step = ladder.step > 0 ? ladder.step : 1
+  const mid = snapToLadder(suggested, ladder)
+  const lower = Math.round((mid - step) * 100) / 100
+  const higher = Math.round((mid + step) * 100) / 100
 
   const options: LoadOption[] = []
-  // Con cargas muy bajas el lateral inferior puede coincidir con la sugerida:
-  // en ese caso no se ofrece, porque un boton que no cambia nada confunde.
-  if (lower < mid) options.push({ kg: lower, delta: `−${fmt(mid - lower)} kg`, kind: 'lower' })
-  options.push({ kg: mid, delta: '', kind: 'suggested' })
-  options.push({ kg: higher, delta: `+${fmt(higher - mid)} kg`, kind: 'higher' })
+  // Por debajo de la carga minima no hay nada que ofrecer: un boton que no
+  // cambia nada, o que propone un peso imposible, confunde mas que ayuda.
+  if (lower >= ladder.base) {
+    options.push({
+      kg: lower,
+      delta: `−${fmt(mid - lower)} kg`,
+      kind: 'lower',
+      plate: platePosition(lower, ladder),
+    })
+  }
+  options.push({ kg: mid, delta: '', kind: 'suggested', plate: platePosition(mid, ladder) })
+  options.push({
+    kg: higher,
+    delta: `+${fmt(higher - mid)} kg`,
+    kind: 'higher',
+    plate: platePosition(higher, ladder),
+  })
   return options
 }
