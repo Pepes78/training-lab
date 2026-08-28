@@ -380,14 +380,20 @@ export function setsOfWeek(
   return setLogs.filter((s) => ids.has(s.sessionId))
 }
 
-/** Ultima sesion registrada de un slot, para calcular la sugerencia de carga. */
+/**
+ * Ultima sesion registrada de un slot, para calcular la sugerencia de carga.
+ * Se devuelve tambien la semana de esa sesion: el objetivo de RIR con el que
+ * se validan esas series es el de ENTONCES, no el de la semana actual (la
+ * rampa de RIR baja semana a semana, asi que comparar contra el objetivo de
+ * hoy rechazaria una progresion perfectamente valida de la semana pasada).
+ */
 export function lastSetsForSlot(
   sessions: Session[],
   setLogs: SetLog[],
   cycleId: string,
   slotId: string,
   beforeWeek: number,
-): SetLog[] {
+): { week: number; sets: SetLog[] } | null {
   const relevant = sessions
     .filter((s) => s.cycleId === cycleId && s.week < beforeWeek)
     .sort((a, b) => b.week - a.week || b.date.localeCompare(a.date))
@@ -396,7 +402,7 @@ export function lastSetsForSlot(
     const sets = setLogs.filter(
       (l) => l.sessionId === session.id && l.slotId === slotId && !l.isWarmup,
     )
-    if (sets.length > 0) return sets.sort((a, b) => a.setIndex - b.setIndex)
+    if (sets.length > 0) return { week: session.week, sets: sets.sort((a, b) => a.setIndex - b.setIndex) }
   }
-  return []
+  return null
 }

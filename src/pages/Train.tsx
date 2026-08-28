@@ -101,6 +101,7 @@ export default function Train() {
 
   const doneHere = setsFor(slot)
   const targetSets = prescribedSets(routine, slot, week)
+  const last = lastSetsForSlot(sessions, setLogs, cycle.id, slot.slotId, week)
 
   return (
     <div className="space-y-4">
@@ -159,7 +160,8 @@ export default function Train() {
           position={{ index: exIdx + 1, total: slots.length }}
           done={doneHere}
           targetSets={targetSets}
-          lastSets={lastSetsForSlot(sessions, setLogs, cycle.id, slot.slotId, week)}
+          lastSets={last?.sets ?? []}
+          lastWeek={last?.week ?? null}
           minPlate={settings.minPlateIncrement}
           ladders={settings.exerciseLadders}
           onDemo={() => setDemo({ exercise, note: slot.notes })}
@@ -291,6 +293,7 @@ function ExerciseFocus({
   done,
   targetSets,
   lastSets,
+  lastWeek,
   minPlate,
   ladders,
   onDemo,
@@ -309,6 +312,7 @@ function ExerciseFocus({
   done: SetLog[]
   targetSets: number
   lastSets: SetLog[]
+  lastWeek: number | null
   minPlate: number
   ladders: Record<string, LoadLadder>
   onDemo: () => void
@@ -325,11 +329,11 @@ function ExerciseFocus({
   // carga que no existe.
   const ladder = ladderFor(exercise, ladders, minPlate)
   const suggestion = useMemo(() => {
-    const raw = suggestNext(routine, slot, exercise, week, lastSets, ladder.step)
+    const raw = suggestNext(routine, slot, exercise, week, lastSets, ladder.step, lastWeek)
     return raw.weightKg === null
       ? raw
       : { ...raw, weightKg: snapToLadder(raw.weightKg, ladder) }
-  }, [routine, slot, exercise, week, lastSets, ladder])
+  }, [routine, slot, exercise, week, lastSets, ladder, lastWeek])
 
   const isSeconds = (slot.metric ?? exercise.defaultMetric) === 'seconds'
   const lastWeight = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.weightKg)) : undefined

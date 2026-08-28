@@ -54,6 +54,10 @@ export function incrementFor(exercise: Exercise, routine: Routine, slot: Slot): 
  *
  * @param lastSets Series efectivas de la ULTIMA sesion en que se hizo este slot,
  *                 en orden. Vacio si nunca se ha hecho.
+ * @param lastWeek Semana en la que se registraron `lastSets`. Se usa para saber
+ *                 que RIR se les exigia ENTONCES: la rampa de RIR baja semana a
+ *                 semana, y comparar contra el objetivo de hoy rechazaria una
+ *                 progresion valida hecha bajo un objetivo mas laxo.
  */
 export function suggestNext(
   routine: Routine,
@@ -62,6 +66,7 @@ export function suggestNext(
   week: number,
   lastSets: SetLog[],
   minPlateIncrement: number,
+  lastWeek: number | null = null,
 ): Suggestion {
   const rir = targetRIR(routine, slot, week)
   const [minReps, maxReps] = slot.repRange
@@ -105,7 +110,12 @@ export function suggestNext(
   // descarga (con la mitad de series) tampoco se progresa.
   const completedPrescription = atWeight.length >= slot.sets
   const allAtTop = completedPrescription && atWeight.every((s) => s.reps >= maxReps)
-  const rirOk = atWeight.every((s) => (s.rir ?? numericRIR) <= numericRIR)
+
+  // El RIR que se les exigia a esas series es el de su propia semana, no el de
+  // la semana actual.
+  const lastRir = lastWeek === null ? rir : targetRIR(routine, slot, lastWeek)
+  const lastNumericRIR = typeof lastRir === 'number' ? lastRir : numericRIR
+  const rirOk = atWeight.every((s) => (s.rir ?? lastNumericRIR) <= lastNumericRIR)
 
   const type = slot.progression?.type ?? routine.progression.type
 
@@ -177,6 +187,20 @@ export function suggestNext(
   }
 
   const repsList = atWeight.map((s) => s.reps).join(', ')
+
+  // Ya llegaste al tope de reps en todas las series, pero con mas margen del
+  // exigido entonces: no hay motivo para pedir mas reps, que ya no caben en
+  // el rango. Repite el peso y ajusta el esfuerzo al objetivo.
+  if (allAtTop) {
+    return {
+      weightKg: lastWeight,
+      repRange: slot.repRange,
+      targetRIR: rir,
+      rationale: `Ya completaste ${maxReps} reps en todas las series a ${lastWeight} kg, pero con mas margen del previsto. Repite el peso y acercate mas al fallo.`,
+      basis: 'hold',
+    }
+  }
+
   return {
     weightKg: lastWeight,
     repRange: slot.repRange,
