@@ -1,0 +1,485 @@
+{
+  "schemaVersion": "1.0",
+  "id": "ul-ppl-5d-pre-tailandia",
+  "name": "Upper/Lower + PPL — Pre-Tailandia (sem 9-11)",
+  "description": "Continuacion del bloque Upper/Lower + PPL para las 3 semanas antes del viaje (12-31 oct). Semanas 1-2: ataque con progresion doble, 1-2 RIR y +3 series en deltoide lateral y biceps. Semana 3 (26-31 oct): dosis minima efectiva, mitad de volumen manteniendo la intensidad; elige 2-3 sesiones de 40-45 min y salta sin culpa las que no entren. Cambios vs bloque anterior: press banca con barra -> press inclinado con mancuernas (hombro), dominadas con lastre, pushdown -> press frances, martillo -> curl Bayesian en polea, curl femoral sentado unilateral con pausa, talones sentado con pausa y parciales en estiramiento.",
+  "author": "Training Lab — metodologia al estilo Jeff Nippard",
+  "goal": "hypertrophy",
+  "experienceLevel": "intermediate",
+  "durationWeeks": 3,
+  "daysPerWeek": 5,
+  "tags": [
+    "upper-lower",
+    "ppl",
+    "hipertrofia",
+    "5 dias",
+    "frecuencia 2x",
+    "pre-viaje"
+  ],
+  "references": [
+    "Frecuencia 2x/semana por grupo muscular: Schoenfeld, Ogborn & Krieger (2016), meta-analisis de frecuencia y hipertrofia",
+    "Volumen reducido a ~1/3 mantiene tamano y fuerza: Bickel et al. (2011), J Appl Physiol",
+    "Curl femoral sentado: mayor hipertrofia de isquios que tumbado: Maeo et al. (2021), Med Sci Sports Exerc",
+    "Triceps: mayor hipertrofia con brazo por encima de la cabeza: Maeo et al. (2023), Eur J Sport Sci",
+    "Parciales en longitud larga para gemelo: Kassiano et al. (2023), J Strength Cond Res"
+  ],
+  "progression": {
+    "type": "double-progression",
+    "incrementKg": {
+      "upper": 2.5,
+      "lower": 5,
+      "isolation": 1.25
+    },
+    "rirRamp": [
+      2,
+      1,
+      "deload"
+    ]
+  },
+  "deload": {
+    "week": "last",
+    "volumeMultiplier": 0.5,
+    "intensityMultiplier": 1.0
+  },
+  "days": [
+    {
+      "id": "d1-upper",
+      "name": "Upper — Fuerza",
+      "type": "upper",
+      "order": 1,
+      "focus": "Empuje y traccion pesados, rangos bajos",
+      "notes": "Dia mas pesado del tren superior. Descansos largos en los dos primeros ejercicios: el objetivo es carga, no bombeo.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d1-s1",
+              "exerciseId": "press-inclinado-mancuernas",
+              "sets": 4,
+              "repRange": [6, 8],
+              "restSec": 180,
+              "notes": "Sustituye al press banca con barra (contraindicado por tu hombro). Banco a 30 grados, agarre neutro o semineutro, escapulas retraidas. Arranca 2-4 kg por mancuerna sobre tu inclinado de Push. Sube cuando hagas 8 reps limpias en las 4 series.",
+              "warmupSets": 3,
+              "perSide": false,
+              "substitutions": ["press-pecho-maquina", "press-banca-barra"]
+            },
+            {
+              "slotId": "d1-s2",
+              "exerciseId": "dominadas",
+              "sets": 4,
+              "repRange": [6, 8],
+              "restSec": 150,
+              "notes": "Agarre neutro con lastre +2.5 kg. Llevas 8 reps x4 sin lastre desde hace 5 sesiones: anade carga y baja a 6-7 reps. Vuelve a subir lastre al llegar a 8 en todas las series.",
+              "warmupSets": 1,
+              "perSide": false,
+              "substitutions": ["dominadas-asistidas", "jalon-amplio"]
+            },
+            {
+              "slotId": "d1-s3",
+              "exerciseId": "press-militar-mancuernas",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 120,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["press-hombro-maquina"]
+            },
+            {
+              "slotId": "d1-s4",
+              "exerciseId": "remo-barra",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 120,
+              "notes": "Torso a 45 grados. Si la lumbar se resiente, cambia a remo con apoyo. Subiste a 27.5 kg: consolida 8-10 reps antes de subir.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["remo-mancuerna", "remo-sentado-polea"]
+            },
+            {
+              "slotId": "d1-s5",
+              "exerciseId": "elevaciones-laterales",
+              "sets": 4,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["elevaciones-laterales-polea"],
+              "notes": "+1 serie (enfasis deltoide lateral). Llega a 15 reps limpias antes de subir carga; sin impulso del tronco."
+            },
+            {
+              "slotId": "d1-s6",
+              "exerciseId": "curl-ez",
+              "sets": 4,
+              "repRange": [8, 10],
+              "restSec": 90,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["curl-barra", "curl-inclinado"],
+              "notes": "+1 serie (enfasis biceps). Ya hiciste 10 reps x3 a 10 kg: sube a 11.25 kg con microdiscos."
+            },
+            {
+              "slotId": "d1-s7",
+              "exerciseId": "press-frances",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 75,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["triceps-polea", "copa-triceps"],
+              "notes": "Sustituye al pushdown (estancado en 26.25 kg desde la semana 2). Barra EZ, codos fijos, baja detras de la frente para estirar la cabeza larga."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d2-lower",
+      "name": "Lower — Fuerza",
+      "type": "lower",
+      "order": 2,
+      "focus": "Sentadilla y bisagra de cadera pesadas",
+      "notes": "Prioriza la calidad tecnica de la sentadilla. Si llegas con fatiga alta del dia anterior, baja una serie antes que bajar el peso.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d2-s1",
+              "exerciseId": "sentadilla-barra",
+              "sets": 4,
+              "repRange": [5, 7],
+              "restSec": 210,
+              "notes": "Llevas 6 sesiones en 40 kg con RIR 0. Esta vez deja 1 RIR en las series 1-2 y sube a 42.5 kg solo cuando completes 7 reps en las 4 series.",
+              "warmupSets": 3,
+              "perSide": false,
+              "substitutions": ["sentadilla-maquina", "prensa-piernas"]
+            },
+            {
+              "slotId": "d2-s2",
+              "exerciseId": "peso-muerto-rumano-barra",
+              "sets": 3,
+              "repRange": [8, 10],
+              "restSec": 150,
+              "notes": "Baja solo hasta donde mantengas la espalda neutra. Sube a 50 kg cuando hagas 10 reps en las 3 series.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["peso-muerto-rumano"]
+            },
+            {
+              "slotId": "d2-s3",
+              "exerciseId": "prensa-piernas",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["sentadilla-maquina", "zancada-mancuernas"]
+            },
+            {
+              "slotId": "d2-s4",
+              "exerciseId": "curl-femoral",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["curl-femoral-sentado"]
+            },
+            {
+              "slotId": "d2-s5",
+              "exerciseId": "elevacion-talones-pie",
+              "sets": 4,
+              "repRange": [10, 15],
+              "restSec": 60,
+              "notes": "Pausa de 1 segundo en el estiramiento de abajo. Hiciste 15 reps en las 4 series a 110 kg: sube a 115 kg.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["elevacion-talones-sentado", "elevacion-talones"]
+            },
+            {
+              "slotId": "d2-s6",
+              "exerciseId": "plancha",
+              "sets": 3,
+              "repRange": [30, 45],
+              "restSec": 45,
+              "warmupSets": 0,
+              "metric": "seconds",
+              "perSide": false,
+              "substitutions": ["elevacion-piernas"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d3-push",
+      "name": "Push — Hipertrofia",
+      "type": "push",
+      "order": 3,
+      "focus": "Pecho, deltoides anterior y lateral, triceps",
+      "notes": "Rangos medios y altos, descansos mas cortos. Busca tension y estiramiento, no cargas maximas.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d3-s1",
+              "exerciseId": "press-inclinado-mancuernas",
+              "sets": 4,
+              "repRange": [8, 10],
+              "restSec": 150,
+              "warmupSets": 2,
+              "perSide": false,
+              "substitutions": ["press-pecho-maquina"],
+              "notes": "El trabajo pesado de pecho ahora lo hace el Upper con agarre neutro; aqui busca tension y rango."
+            },
+            {
+              "slotId": "d3-s2",
+              "exerciseId": "press-pecho-maquina",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["cruce-poleas", "aperturas-mancuernas"],
+              "notes": "Hiciste 12 reps x3 a 55 kg: sube a 57.5-60 kg."
+            },
+            {
+              "slotId": "d3-s3",
+              "exerciseId": "press-hombro-maquina",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["press-militar-mancuernas"]
+            },
+            {
+              "slotId": "d3-s4",
+              "exerciseId": "cruce-poleas",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["aperturas-mancuernas"]
+            },
+            {
+              "slotId": "d3-s5",
+              "exerciseId": "elevaciones-laterales-polea",
+              "sets": 4,
+              "repRange": [12, 20],
+              "restSec": 45,
+              "notes": "El deltoides lateral tolera y necesita volumen alto. No busques peso.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["elevaciones-laterales"]
+            },
+            {
+              "slotId": "d3-s6",
+              "exerciseId": "triceps-sobre-cabeza",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "notes": "Estancado en 26.25 kg. Busca 12 reps en las 3 series antes de subir 1.25 kg, con pausa de 1 s en el estiramiento.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["copa-triceps", "press-frances"]
+            },
+            {
+              "slotId": "d3-s7",
+              "exerciseId": "fondos-paralelas",
+              "sets": 3,
+              "repRange": [8, 12],
+              "restSec": 90,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["triceps-polea"],
+              "notes": "Baja solo hasta ~90 grados de codo; protege el hombro anterior."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d4-pull",
+      "name": "Pull — Hipertrofia",
+      "type": "pull",
+      "order": 4,
+      "focus": "Dorsal, espalda alta, deltoides posterior, biceps",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d4-s1",
+              "exerciseId": "jalon-amplio",
+              "sets": 4,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 1,
+              "perSide": false,
+              "substitutions": ["dominadas", "dominadas-asistidas", "jalon-pecho"]
+            },
+            {
+              "slotId": "d4-s2",
+              "exerciseId": "remo-sentado-polea",
+              "sets": 4,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["remo-mancuerna", "remo-cable", "remo-barra"],
+              "notes": "Hiciste 12 reps x4 a 40 kg: sube a 42.5 kg."
+            },
+            {
+              "slotId": "d4-s3",
+              "exerciseId": "pullover-polea",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "notes": "Aisla el dorsal sin que el biceps sea el eslabon debil.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["pullover-mancuerna"]
+            },
+            {
+              "slotId": "d4-s4",
+              "exerciseId": "face-pull",
+              "sets": 4,
+              "repRange": [15, 20],
+              "restSec": 45,
+              "notes": "Deltoides posterior y salud del hombro. Tecnica sobre carga.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["remo-polea-amplio"]
+            },
+            {
+              "slotId": "d4-s5",
+              "exerciseId": "curl-inclinado",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["curl-barra", "curl-cable"]
+            },
+            {
+              "slotId": "d4-s6",
+              "exerciseId": "curl-cable",
+              "sets": 4,
+              "repRange": [10, 12],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["curl-martillo", "curl-concentrado"],
+              "notes": "Curl Bayesian (sustituye al martillo, plano en 18 kg). Polea baja, de espaldas a la torre, codo por detras del tronco para maxima tension en estiramiento. +1 serie (enfasis biceps). Saltos de 1.25 kg."
+            },
+            {
+              "slotId": "d4-s7",
+              "exerciseId": "encogimientos",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["remo-polea-amplio"],
+              "notes": "Hiciste 15 reps x3 a 28 kg: sube a 30 kg."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d5-legs",
+      "name": "Legs — Hipertrofia",
+      "type": "legs",
+      "order": 5,
+      "focus": "Cuadriceps, isquiotibiales, gluteos, gemelos y core",
+      "notes": "Segundo estimulo semanal de pierna, con maquinas y rangos mas altos para acumular volumen sin la fatiga sistemica de la sentadilla libre.",
+      "blocks": [
+        {
+          "type": "single",
+          "exercises": [
+            {
+              "slotId": "d5-s1",
+              "exerciseId": "sentadilla-maquina",
+              "sets": 4,
+              "repRange": [8, 12],
+              "restSec": 180,
+              "warmupSets": 2,
+              "perSide": false,
+              "substitutions": ["prensa-piernas", "sentadilla-barra"]
+            },
+            {
+              "slotId": "d5-s2",
+              "exerciseId": "peso-muerto-rumano",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 120,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["peso-muerto-rumano-barra"]
+            },
+            {
+              "slotId": "d5-s3",
+              "exerciseId": "extension-cuadriceps",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["prensa-piernas"]
+            },
+            {
+              "slotId": "d5-s4",
+              "exerciseId": "curl-femoral-sentado",
+              "sets": 3,
+              "repRange": [12, 15],
+              "restSec": 60,
+              "warmupSets": 0,
+              "perSide": true,
+              "substitutions": ["curl-femoral"],
+              "notes": "Unilateral con pausa de 2 s en el estiramiento. Estancado en 57.5 kg bilateral desde la semana 1: arranca con ~la mitad del peso por pierna, ajusta y sube 1.25 kg al llegar a 15 reps."
+            },
+            {
+              "slotId": "d5-s5",
+              "exerciseId": "hip-thrust",
+              "sets": 3,
+              "repRange": [10, 12],
+              "restSec": 90,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["abductores", "sumo-mancuerna"],
+              "notes": "Hiciste 12 reps x3 a 80 kg: sube a 85 kg."
+            },
+            {
+              "slotId": "d5-s6",
+              "exerciseId": "elevacion-talones-sentado",
+              "sets": 4,
+              "repRange": [12, 20],
+              "restSec": 45,
+              "notes": "Pausa de 2-3 s abajo y rango completo. Tras el fallo en reps completas de la ultima serie, 5-8 parciales en la mitad inferior (estiramiento). Sentado incide en el soleo.",
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["elevacion-talones-pie", "elevacion-talones"]
+            },
+            {
+              "slotId": "d5-s7",
+              "exerciseId": "elevacion-piernas",
+              "sets": 3,
+              "repRange": [10, 15],
+              "restSec": 45,
+              "warmupSets": 0,
+              "perSide": false,
+              "substitutions": ["crunch-polea", "plancha"],
+              "notes": "Bajo de 15 a 11 reps en 4 semanas: si no mejora, cambia a crunch en polea."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "customExercises": []
+}
