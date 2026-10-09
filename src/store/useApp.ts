@@ -406,3 +406,31 @@ export function lastSetsForSlot(
   }
   return null
 }
+
+/**
+ * Ultima sesion registrada de un ejercicio en CUALQUIER ciclo (excluyendo
+ * `excludeCycleId`, normalmente el activo). El slotId ancla el historial a
+ * una rutina concreta, asi que al empezar una rutina nueva lastSetsForSlot
+ * siempre da "primera vez" aunque el ejercicio ya se haya entrenado antes:
+ * esto permite recuperar el ultimo peso usado en la rutina anterior.
+ */
+export function lastSetsForExercise(
+  sessions: Session[],
+  setLogs: SetLog[],
+  exerciseId: string,
+  excludeCycleId?: string,
+): { date: string; sets: SetLog[] } | null {
+  const sessionById = new Map(sessions.map((s) => [s.id, s]))
+  const byDate = new Map<string, SetLog[]>()
+  for (const log of setLogs) {
+    if (log.isWarmup || log.exerciseId !== exerciseId) continue
+    const session = sessionById.get(log.sessionId)
+    if (!session || session.cycleId === excludeCycleId) continue
+    const list = byDate.get(session.date) ?? []
+    list.push(log)
+    byDate.set(session.date, list)
+  }
+  const lastDate = [...byDate.keys()].sort((a, b) => b.localeCompare(a))[0]
+  if (!lastDate) return null
+  return { date: lastDate, sets: byDate.get(lastDate)!.sort((a, b) => a.setIndex - b.setIndex) }
+}

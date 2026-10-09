@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { useApp, useCatalog, useCatalogList, useCurrentWeek, lastSetsForSlot } from '@/store/useApp'
+import {
+  useApp,
+  useCatalog,
+  useCatalogList,
+  useCurrentWeek,
+  lastSetsForSlot,
+  lastSetsForExercise,
+} from '@/store/useApp'
 import { isDeloadWeek, prescribedSets, slotsOfDay, type Slot } from '@/types/routine'
 import type { Exercise } from '@/types/catalog'
 import type { SetLog } from '@/types/logs'
@@ -102,6 +109,10 @@ export default function Train() {
   const doneHere = setsFor(slot)
   const targetSets = prescribedSets(routine, slot, week)
   const last = lastSetsForSlot(sessions, setLogs, cycle.id, slot.slotId, week)
+  // Si nunca se hizo este slot en esta rutina, mira si el ejercicio ya se
+  // entreno en una rutina anterior para no arrancar de cero.
+  const priorRoutine =
+    last || !exercise ? null : lastSetsForExercise(sessions, setLogs, exercise.id, cycle.id)
 
   return (
     <div className="space-y-4">
@@ -162,6 +173,7 @@ export default function Train() {
           targetSets={targetSets}
           lastSets={last?.sets ?? []}
           lastWeek={last?.week ?? null}
+          priorRoutineSets={priorRoutine?.sets ?? []}
           minPlate={settings.minPlateIncrement}
           ladders={settings.exerciseLadders}
           onDemo={() => setDemo({ exercise, note: slot.notes })}
@@ -294,6 +306,7 @@ function ExerciseFocus({
   targetSets,
   lastSets,
   lastWeek,
+  priorRoutineSets,
   minPlate,
   ladders,
   onDemo,
@@ -313,6 +326,7 @@ function ExerciseFocus({
   targetSets: number
   lastSets: SetLog[]
   lastWeek: number | null
+  priorRoutineSets: SetLog[]
   minPlate: number
   ladders: Record<string, LoadLadder>
   onDemo: () => void
@@ -329,11 +343,11 @@ function ExerciseFocus({
   // carga que no existe.
   const ladder = ladderFor(exercise, ladders, minPlate)
   const suggestion = useMemo(() => {
-    const raw = suggestNext(routine, slot, exercise, week, lastSets, ladder.step, lastWeek)
+    const raw = suggestNext(routine, slot, exercise, week, lastSets, ladder.step, lastWeek, priorRoutineSets)
     return raw.weightKg === null
       ? raw
       : { ...raw, weightKg: snapToLadder(raw.weightKg, ladder) }
-  }, [routine, slot, exercise, week, lastSets, ladder, lastWeek])
+  }, [routine, slot, exercise, week, lastSets, ladder, lastWeek, priorRoutineSets])
 
   const isSeconds = (slot.metric ?? exercise.defaultMetric) === 'seconds'
   const lastWeight = lastSets.length > 0 ? Math.max(...lastSets.map((s) => s.weightKg)) : undefined
@@ -491,7 +505,9 @@ function ExerciseFocus({
                   ? 'Descarga'
                   : suggestion.basis === 'first-time'
                     ? 'Primera vez'
-                    : 'Manten carga'}
+                    : suggestion.basis === 'carried-over'
+                      ? 'De rutina anterior'
+                      : 'Manten carga'}
           </span>
         </div>
 

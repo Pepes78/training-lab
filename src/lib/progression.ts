@@ -24,7 +24,7 @@ export interface Suggestion {
   /** Explicacion en una linea, se muestra bajo el ejercicio. */
   rationale: string
   /** Como se ha llegado a la sugerencia. */
-  basis: 'no-history' | 'hold' | 'add-weight' | 'deload' | 'back-off' | 'first-time'
+  basis: 'no-history' | 'hold' | 'add-weight' | 'deload' | 'back-off' | 'first-time' | 'carried-over'
 }
 
 /** Que incremento aplicar segun el ejercicio: compuesto de pierna, de torso o aislamiento. */
@@ -58,6 +58,10 @@ export function incrementFor(exercise: Exercise, routine: Routine, slot: Slot): 
  *                 que RIR se les exigia ENTONCES: la rampa de RIR baja semana a
  *                 semana, y comparar contra el objetivo de hoy rechazaria una
  *                 progresion valida hecha bajo un objetivo mas laxo.
+ * @param priorRoutineSets Series de este mismo ejercicio en OTRA rutina (otro
+ *                 ciclo), por si nunca se hizo en esta. El slotId no se
+ *                 comparte entre rutinas, asi que sin esto cada rutina nueva
+ *                 empezaria de cero aunque el ejercicio ya se dominara.
  */
 export function suggestNext(
   routine: Routine,
@@ -67,12 +71,28 @@ export function suggestNext(
   lastSets: SetLog[],
   minPlateIncrement: number,
   lastWeek: number | null = null,
+  priorRoutineSets: SetLog[] = [],
 ): Suggestion {
   const rir = targetRIR(routine, slot, week)
   const [minReps, maxReps] = slot.repRange
   const working = lastSets.filter((s) => !s.isWarmup && s.reps > 0)
 
   if (working.length === 0) {
+    const prior = priorRoutineSets.filter((s) => !s.isWarmup && s.reps > 0)
+    if (prior.length > 0) {
+      const priorWeight = Math.max(...prior.map((s) => s.weightKg))
+      const repsList = prior
+        .filter((s) => s.weightKg === priorWeight)
+        .map((s) => s.reps)
+        .join(', ')
+      return {
+        weightKg: priorWeight,
+        repRange: slot.repRange,
+        targetRIR: rir,
+        rationale: `Nuevo en esta rutina. En la anterior llegaste a ${priorWeight} kg (${repsList} reps) en este ejercicio: usalo como punto de partida.`,
+        basis: 'carried-over',
+      }
+    }
     return {
       weightKg: null,
       repRange: slot.repRange,
